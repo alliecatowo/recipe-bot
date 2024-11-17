@@ -1,4 +1,5 @@
 import openai
+import logging
 from config.config import OPENAI_API_KEY
 
 
@@ -20,5 +21,5 @@ class GPTProcessor:
             content = response.choices[0].message.content
             return content
         except Exception as e:
-            print(f"Error during GPT processing: {e}")
+            logging.error(f"Error during GPT processing: {e}")
             return ""

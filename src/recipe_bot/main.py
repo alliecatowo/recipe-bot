@@ -1,46 +1,51 @@
 import sys
 import os
+import logging
 from scraper.downloader import InstagramDownloader
 from scraper.transcriber import Transcriber
 from scraper.gpt_processor import GPTProcessor
 from scraper.recipe_generator import RecipeGenerator
 
+logging.basicConfig(level=logging.INFO)
 
-def main():
-    if len(sys.argv) < 2:
-        post_url = input("Please enter the Instagram post URL: ")
-    else:
-        post_url = sys.argv[1]
-
+def process_post(post_url):
     downloader = InstagramDownloader(post_url)
     shortcode = downloader._get_shortcode()
-    video_path = os.path.join("downloads", f"{shortcode}.mp4")
+    audio_path = os.path.join("downloads", f"{shortcode}.wav")
     recipe_path = os.path.join("recipes", f"recipe_{shortcode}.md")
 
-    if os.path.exists(video_path) and os.path.exists(recipe_path):
-        print(f"Video and recipe for {shortcode} already exist.")
+    if os.path.exists(audio_path) and os.path.exists(recipe_path):
+        logging.info(f"Audio and recipe for {shortcode} already exist.")
         return
 
-    print("Downloading content...")
-    video_path, caption = downloader.download_content()
-    if not video_path or not caption:
-        print("Failed to download content.")
+    logging.info("Downloading content...")
+    audio_path, caption = downloader.download_content()
+    if not audio_path or not caption:
+        logging.error("Failed to download content.")
         return
 
-    print("Transcribing audio...")
-    transcriber = Transcriber(video_path)
+    logging.info("Transcribing audio...")
+    transcriber = Transcriber(audio_path)
     transcript = transcriber.transcribe_audio()
 
-    print("Generating recipe...")
+    logging.info("Generating recipe...")
     gpt_processor = GPTProcessor()
     recipe = gpt_processor.generate_recipe(transcript, caption)
 
-    print("Saving recipe...")
+    logging.info("Saving recipe...")
     generator = RecipeGenerator(recipe, output_dir="recipes")
     generator.save_recipe(shortcode=shortcode)
 
-    print("Done!")
+    logging.info("Done!")
 
+def main():
+    if len(sys.argv) < 2:
+        post_urls = [input("Please enter the Instagram post URL: ")]
+    else:
+        post_urls = sys.argv[1:]
+
+    for post_url in post_urls:
+        process_post(post_url)
 
 if __name__ == "__main__":
     main()

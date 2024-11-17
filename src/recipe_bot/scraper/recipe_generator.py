@@ -1,4 +1,5 @@
 import os
+import logging
 
 
 class RecipeGenerator:
@@ -12,6 +13,6 @@ class RecipeGenerator:
         try:
             with open(output_path, "w") as file:
                 file.write(self.recipe_text)
-            print(f"Recipe saved to {output_path}")
+            logging.info(f"Recipe saved to {output_path}")
         except Exception as e:
-            print(f"Error saving recipe: {e}")
+            logging.error(f"Error saving recipe: {e}")

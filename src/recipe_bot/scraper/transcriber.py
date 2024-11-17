@@ -1,8 +1,9 @@
 import whisper
-import os
+
 import logging
 
 model = whisper.load_model("small")
+
 
 class Transcriber:
     def __init__(self, audio_path):
