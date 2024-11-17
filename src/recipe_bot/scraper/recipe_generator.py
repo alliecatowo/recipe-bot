@@ -2,8 +2,7 @@ import os
 import logging
 import openai
 from config.config import OPENAI_API_KEY
-import firebase_admin
-from firebase_admin import credentials, firestore, storage
+from firebase.client import FirebaseClient
 
 openai.api_key = OPENAI_API_KEY
 
@@ -15,42 +14,23 @@ class RecipeGenerator:
     Attributes:
         output_dir (str): Directory to save the generated recipes.
         local (bool): Whether to save files locally or to Firebase.
-        db (firestore.Client): Firestore client.
-        bucket (storage.Bucket): Firebase storage bucket.
+        firebase_client (FirebaseClient): Firebase client instance.
     """
 
-    def __init__(self, output_dir="recipes", local=False, firebase_app=None):
+    def __init__(self, output_dir="recipes", local=False, firebase_client=None):
         """
         Initialize the RecipeGenerator.
 
         Args:
             output_dir (str): Directory to save the generated recipes.
             local (bool): Whether to save files locally or to Firebase.
-            firebase_app (firebase_admin.App, optional): Firebase app instance. Defaults to None.
+            firebase_client (FirebaseClient, optional): Firebase client instance. Defaults to None.
         """
         self.output_dir = output_dir
         self.local = local
+        self.firebase_client = firebase_client or FirebaseClient()
         if not local:
-            try:
-                if firebase_app is None:
-                    if not firebase_admin._apps:
-                        service_account_path = os.path.join(
-                            os.path.dirname(__file__), "../../../.private/firebasekey.json"
-                        )
-                        cred = credentials.Certificate(service_account_path)
-                        firebase_app = firebase_admin.initialize_app(
-                            cred,
-                            {
-                                "storageBucket": "ai-recipe-bot-d0b13.firebasestorage.app",
-                                "projectId": "ai-recipe-bot-d0b13",
-                            },
-                        )
-                self.db = firestore.client()
-                self.bucket = storage.bucket()
-                logging.info("Firebase initialized successfully with service account credentials.")
-            except Exception as e:
-                logging.error(f"Error initializing Firebase: {e}")
-                raise
+            logging.info("Firebase initialized successfully.")
 
     def classify_transcript(self, transcript, caption):
         """
@@ -81,15 +61,13 @@ class RecipeGenerator:
             logging.error(f"Error during classification: {e}")
             return 0
 
-    def generate_recipe(self, transcript, caption, save=True, shortcode=None):
+    def generate_recipe(self, transcript, caption):
         """
         Generate a recipe from the transcript and caption.
 
         Args:
             transcript (str): Transcribed text.
             caption (str): Instagram post caption.
-            save (bool): Whether to save the generated recipe.
-            shortcode (str, optional): Shortcode of the Instagram post. Defaults to None.
 
         Returns:
             str: Generated recipe in Markdown format.
@@ -112,8 +90,6 @@ class RecipeGenerator:
                 model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}]
             )
             recipe = response.choices[0].message.content
-            if save and shortcode:
-                self.save_recipe(recipe, shortcode)
             return recipe
         except Exception as e:
             logging.error(f"Error during GPT processing: {e}")
@@ -140,8 +116,11 @@ class RecipeGenerator:
                 logging.error(f"Error saving recipe: {e}")
         else:
             try:
-                blob = self.bucket.blob(f"recipes/recipe_{shortcode}.md")
-                blob.upload_from_string(recipe_text)
-                logging.info(f"Recipe uploaded to Firebase Storage at recipes/recipe_{shortcode}.md")
+                self.firebase_client.upload_string(
+                    recipe_text, f"recipes/recipe_{shortcode}.md"
+                )
+                logging.info(
+                    f"Recipe uploaded to Firebase Storage at recipes/recipe_{shortcode}.md"
+                )
             except Exception as e:
                 logging.error(f"Error uploading recipe to Firebase Storage: {e}")
