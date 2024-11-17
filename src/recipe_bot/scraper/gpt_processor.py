@@ -14,10 +14,11 @@ class GPTProcessor:
             f"Output the recipe in Markdown format."
         )
         try:
-            response = openai.ChatCompletion.create(
-                model="gpt-4", messages=[{"role": "user", "content": prompt}]
+            response = openai.chat.completions.create(
+                model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}]
             )
-            return response["choices"][0]["message"]["content"]
+            content = response.choices[0].message.content
+            return content
         except Exception as e:
             print(f"Error during GPT processing: {e}")
             return ""

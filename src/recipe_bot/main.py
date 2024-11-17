@@ -7,10 +7,10 @@ from scraper.recipe_generator import RecipeGenerator
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python main.py <instagram_post_url>")
-        return
+        post_url = input("Please enter the Instagram post URL: ")
+    else:
+        post_url = sys.argv[1]
 
-    post_url = sys.argv[1]
     downloader = InstagramDownloader(post_url)
 
     print("Downloading content...")
