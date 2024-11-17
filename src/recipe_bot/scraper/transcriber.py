@@ -9,7 +9,7 @@ class Transcriber:
     def __init__(self, audio_path):
         self.audio_path = audio_path
 
-    def transcribe_audio(self):
+    def transcribe_audio(self, verbose=False):
         try:
             response = model.transcribe(
                 audio=self.audio_path, language="en", verbose=True, fp16=False

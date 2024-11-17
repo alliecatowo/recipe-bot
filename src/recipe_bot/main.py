@@ -25,11 +25,11 @@ def process_post(post_url, verbose=False):
 
     logging.info("Transcribing audio...")
     transcriber = Transcriber(audio_path)
-    transcript = transcriber.transcribe_audio()
+    transcript = transcriber.transcribe_audio(verbose)
 
     logging.info("Generating recipe...")
     generator = RecipeGenerator(output_dir="recipes")
-    recipe = generator.generate_recipe(transcript, caption, save=True, shortcode=shortcode)
+    recipe = generator.generate_recipe(transcript, caption, save=True, shortcode=shortcode, verbose=verbose)
 
     if verbose or logging.getLogger().getEffectiveLevel() == logging.DEBUG:
         logging.info(f"Generated recipe:\n{recipe}")

@@ -3,6 +3,7 @@ import logging
 import openai
 from config.config import OPENAI_API_KEY
 
+
 class RecipeGenerator:
     def __init__(self, output_dir="recipes"):
         self.output_dir = output_dir
