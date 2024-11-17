@@ -16,18 +16,22 @@ warnings.filterwarnings(
 )
 
 
-def process_post(post_url, verbose=False):
-    downloader = InstagramDownloader(post_url)
-    shortcode = downloader._get_shortcode()
+def process_post(downloader, post_url, verbose=False, local=False):
+    shortcode = downloader._get_shortcode(post_url)
     audio_path = os.path.join("downloads", f"{shortcode}.mp3")
     recipe_path = os.path.join("recipes", f"recipe_{shortcode}.md")
 
-    if os.path.exists(audio_path) and os.path.exists(recipe_path):
-        logging.info(f"Audio and recipe for {shortcode} already exist.")
-        return
+    if local:
+        if os.path.exists(audio_path) and os.path.exists(recipe_path):
+            logging.info(f"Audio and recipe for {shortcode} already exist locally.")
+            return
+    else:
+        if downloader.file_exists_in_firebase(f"audio/{shortcode}.mp3") and downloader.file_exists_in_firebase(f"recipes/recipe_{shortcode}.md"):
+            logging.info(f"Audio and recipe for {shortcode} already exist in Firebase.")
+            return
 
     logging.info("Downloading content...")
-    audio_path, caption = downloader.download_content()
+    audio_path, caption = downloader.download_content(post_url)
 
     if not os.path.exists(audio_path):
         logging.error(f"Failed to download audio: {audio_path}")
@@ -37,8 +41,12 @@ def process_post(post_url, verbose=False):
     transcriber = Transcriber(audio_path)
     transcript = transcriber.transcribe_audio(verbose)
 
+    if not transcript:
+        logging.error("Failed to transcribe audio.")
+        return
+
     logging.info("Generating recipe...")
-    generator = RecipeGenerator(output_dir="recipes")
+    generator = RecipeGenerator(output_dir="recipes", local=local, firebase_app=downloader.firebase_app)
     try:
         recipe = generator.generate_recipe(
             transcript, caption, save=True, shortcode=shortcode
@@ -61,15 +69,19 @@ def main():
         "post_urls", nargs="+", help="Instagram post URL(s), separated by spaces"
     )
     parser.add_argument("--debug", action="store_true", help="Enable debug output")
+    parser.add_argument(
+        "--local", action="store_true", help="Save files locally instead of Firestore"
+    )
 
     args = parser.parse_args()
 
     if args.debug:
         logging.getLogger().setLevel(logging.DEBUG)
 
-    for post_url in args.post_urls:
-        process_post(post_url, verbose=args.debug)
+    downloader = InstagramDownloader(local=args.local)  # Create downloader object
 
+    for post_url in args.post_urls:
+        process_post(downloader, post_url, verbose=args.debug, local=args.local)  # Pass downloader by reference
 
 if __name__ == "__main__":
     main()
