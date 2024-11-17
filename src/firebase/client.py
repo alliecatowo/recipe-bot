@@ -10,7 +10,7 @@ class FirebaseClient:
         if not local and firebase_app is None:
             if not firebase_admin._apps:
                 service_account_path = os.path.join(
-                    os.path.dirname(__file__), "../../../.private/firebasekey.json"
+                    os.path.dirname(__file__), "../../.private/firebasekey.json"
                 )
                 cred = credentials.Certificate(service_account_path)
                 firebase_app = firebase_admin.initialize_app(
@@ -94,7 +94,9 @@ class FirebaseClient:
                 try:
                     with open(remote_path, "r") as file:
                         content = file.read()
-                    logging.info(f"Content downloaded from local storage at {remote_path}")
+                    logging.info(
+                        f"Content downloaded from local storage at {remote_path}"
+                    )
                     return content
                 except Exception as e:
                     logging.error(f"Error downloading content from local storage: {e}")
@@ -106,10 +108,16 @@ class FirebaseClient:
             try:
                 blob = self.bucket.blob(remote_path)
                 if not blob.exists():
-                    logging.error(f"Remote path {remote_path} does not exist in Firebase Storage.")
-                    raise FileNotFoundError(f"Remote path {remote_path} does not exist in Firebase Storage.")
+                    logging.error(
+                        f"Remote path {remote_path} does not exist in Firebase Storage."
+                    )
+                    raise FileNotFoundError(
+                        f"Remote path {remote_path} does not exist in Firebase Storage."
+                    )
                 content = blob.download_as_text()
-                logging.info(f"Content downloaded from Firebase Storage at {remote_path}")
+                logging.info(
+                    f"Content downloaded from Firebase Storage at {remote_path}"
+                )
                 return content
             except Exception as e:
                 logging.error(f"Error downloading content from Firebase Storage: {e}")
@@ -143,8 +151,12 @@ class FirebaseClient:
             try:
                 blob = self.bucket.blob(remote_path)
                 if not blob.exists():
-                    logging.error(f"Remote path {remote_path} does not exist in Firebase Storage.")
-                    raise FileNotFoundError(f"Remote path {remote_path} does not exist in Firebase Storage.")
+                    logging.error(
+                        f"Remote path {remote_path} does not exist in Firebase Storage."
+                    )
+                    raise FileNotFoundError(
+                        f"Remote path {remote_path} does not exist in Firebase Storage."
+                    )
                 blob.download_to_filename(local_path)
                 logging.info(f"File downloaded from Firebase Storage at {remote_path}")
             except Exception as e:
@@ -172,7 +184,9 @@ class FirebaseClient:
                 with open(local_path, "r") as file:
                     content = file.read()
                 logging.info(f"Document downloaded from local storage at {local_path}")
-                return eval(content)  # Assuming the local document is stored as a dictionary string
+                return eval(
+                    content
+                )  # Assuming the local document is stored as a dictionary string
             except Exception as e:
                 logging.error(f"Error downloading document from local storage: {e}")
                 raise e
@@ -181,8 +195,12 @@ class FirebaseClient:
                 doc_ref = self.db.collection(collection).document(document_id)
                 doc = doc_ref.get()
                 if not doc.exists:
-                    logging.error(f"Document {document_id} does not exist in collection {collection}.")
-                    raise FileNotFoundError(f"Document {document_id} does not exist in collection {collection}.")
+                    logging.error(
+                        f"Document {document_id} does not exist in collection {collection}."
+                    )
+                    raise FileNotFoundError(
+                        f"Document {document_id} does not exist in collection {collection}."
+                    )
                 return doc.to_dict()
             except Exception as e:
                 logging.error(f"Error retrieving document from Firestore: {e}")
