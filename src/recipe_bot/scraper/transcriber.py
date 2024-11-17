@@ -1,6 +1,5 @@
 import whisper
 
-from config.config import OPENAI_API_KEY
 from pydub import AudioSegment
 import os
 
@@ -22,10 +21,9 @@ class Transcriber:
 
     def transcribe_audio(self):
         try:
-            with open(self.audio_path, "rb") as audio_file:
-                response = model.transcribe(
-                    audio=self.audio_path, language="en", verbose=True
-                )
+            response = model.transcribe(
+                audio=self.audio_path, language="en", verbose=True
+            )
             return response.get("text", "")
         except Exception as e:
             print(f"Error during transcription: {e}")
