@@ -4,6 +4,7 @@ import requests
 import logging
 from pydub import AudioSegment
 
+
 class InstagramDownloader:
     def __init__(self, post_url):
         self.post_url = post_url
@@ -18,12 +19,11 @@ class InstagramDownloader:
             caption = post.caption
             video_url = post.video_url
 
-            audio_path = os.path.join(output_dir, f"{self._get_shortcode()}.wav")
+            audio_path = os.path.join(output_dir, f"{self._get_shortcode()}.mp3")
             if not os.path.exists(audio_path):
                 video_path = os.path.join(output_dir, f"{self._get_shortcode()}.mp4")
                 self._download_video(video_url, video_path)
-                self._convert_to_audio(video_path, audio_path)
-                os.remove(video_path)
+
 
             return audio_path, caption
         except Exception as e:
@@ -48,7 +48,7 @@ class InstagramDownloader:
     def _convert_to_audio(self, video_path, audio_path):
         try:
             audio = AudioSegment.from_file(video_path, format="mp4")
-            audio.export(audio_path, format="wav")
+            audio.export(audio_path, format="mp3", bitrate="192k")
             logging.info(f"Audio extracted to {audio_path}")
         except Exception as e:
             logging.error(f"Error converting video to audio: {e}")

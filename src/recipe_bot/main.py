@@ -1,7 +1,7 @@
 import os
 import logging
 import argparse
-import warnings  # Import warnings module
+import warnings
 from scraper.downloader import InstagramDownloader
 from scraper.transcriber import Transcriber
 from scraper.recipe_generator import RecipeGenerator
@@ -19,7 +19,7 @@ warnings.filterwarnings(
 def process_post(post_url, verbose=False):
     downloader = InstagramDownloader(post_url)
     shortcode = downloader._get_shortcode()
-    audio_path = os.path.join("downloads", f"{shortcode}.wav")
+    audio_path = os.path.join("downloads", f"{shortcode}.mp3")
     recipe_path = os.path.join("recipes", f"recipe_{shortcode}.md")
 
     if os.path.exists(audio_path) and os.path.exists(recipe_path):
@@ -28,8 +28,9 @@ def process_post(post_url, verbose=False):
 
     logging.info("Downloading content...")
     audio_path, caption = downloader.download_content()
-    if not audio_path or not caption:
-        logging.error("Failed to download content.")
+
+    if not os.path.exists(audio_path):
+        logging.error(f"Failed to download audio: {audio_path}")
         return
 
     logging.info("Transcribing audio...")
@@ -57,7 +58,7 @@ def main():
         description="Process Instagram post URLs to generate recipes."
     )
     parser.add_argument(
-        "post_urls", nargs="+", help="Instagram post URL(s), seperated by spaces"
+        "post_urls", nargs="+", help="Instagram post URL(s), separated by spaces"
     )
     parser.add_argument("--debug", action="store_true", help="Enable debug output")
 
