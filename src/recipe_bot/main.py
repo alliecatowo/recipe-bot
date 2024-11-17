@@ -38,9 +38,13 @@ def process_post(post_url, verbose=False):
 
     logging.info("Generating recipe...")
     generator = RecipeGenerator(output_dir="recipes")
-    recipe = generator.generate_recipe(
-        transcript, caption, save=True, shortcode=shortcode
-    )
+    try:
+        recipe = generator.generate_recipe(
+            transcript, caption, save=True, shortcode=shortcode
+        )
+    except ValueError as e:
+        logging.error(f"Recipe generation failed: {e}")
+        return
 
     if verbose or logging.getLogger().getEffectiveLevel() == logging.DEBUG:
         logging.info(f"Generated recipe:\n{recipe}")

@@ -29,13 +29,14 @@ class RecipeGenerator:
             logging.error(f"Error during classification: {e}")
             return 0
 
+    
     def generate_recipe(self, transcript, caption, save=True, shortcode=None):
         likelihood = self.classify_transcript(transcript, caption)
         if likelihood < 85:
             logging.info(
                 "The transcript is not likely to contain a recipe. Please try another video."
             )
-            return ""
+            raise ValueError("Transcript does not contain a recipe.")
 
         prompt = (
             f"Given the following transcript and caption, extract an actionable recipe:\n\n"
