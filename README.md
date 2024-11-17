@@ -1,9 +1,11 @@
 # Instagram Recipe Scraper
 
-**Instagram Recipe Scraper** is a Python-based tool that extracts actionable recipes from Instagram posts. By analyzing captions and video audio transcripts, it generates well-structured recipes in Markdown format.  
+**Instagram Recipe Scraper** is a Python-based tool that extracts actionable recipes from Instagram posts. By analyzing captions and video audio transcripts, it generates well-structured recipes in Markdown format. I intend to scale this up to a full-fledged web application in the future, but for now, it's a command-line tool MVP.
 
 This project uses:
 - [Instaloader](https://instaloader.github.io) to download Instagram posts.
+- [FFmpeg](https://ffmpeg.org) for audio extraction.
+- [Pydub](https://pydub.com) for audio processing.
 - [Whisper API](https://openai.com/whisper) for audio transcription.
 - [OpenAI GPT](https://openai.com/api) to generate the recipe from text inputs.
 
@@ -22,33 +24,50 @@ This project uses:
 
 - Python 3.8+
 - [PDM](https://pdm.fming.dev/latest/) for dependency management
+- [FFmpeg](https://ffmpeg.org) for audio extraction.
 - An OpenAI API key for Whisper and GPT integrations.
 
 ---
 
 ## Installation
 
-1. **Clone the Repository**:
-   ```bash
-   git clone https://github.com/yourusername/instagram-recipe-scraper.git
-   cd instagram-recipe-scraper
-   ```
+### Clone the Repository
+```bash
+git clone https://github.com/yourusername/instagram-recipe-scraper.git
+cd instagram-recipe-scraper
+```
 
-2. **Install PDM**:
-   ```bash
-   pip install pdm
-   ```
+### Install PDM
+```bash
+pip install pdm
+```
 
-3. **Install Dependencies**:
-   ```bash
-   pdm install
-   ```
+### Install Dependencies
+```bash
+pdm install
+```
 
-4. **Set the OpenAI API Key**:
-   Export your OpenAI API key to the environment:
-   ```bash
-   export OPENAI_API_KEY="your-openai-api-key"
-   ```
+### Set the OpenAI API Key
+Export your OpenAI API key to the environment:
+```bash
+export OPENAI_API_KEY="your-openai-api-key"
+```
+
+### Platform-Specific Instructions
+
+#### Linux
+Ensure you have the necessary CUDA libraries for GPU acceleration:
+```bash
+sudo apt-get install nvidia-cuda-toolkit
+```
+
+#### macOS
+No additional steps are required.
+
+#### Windows
+Ensure you have the necessary CUDA libraries for GPU acceleration:
+1. Download and install the [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads).
+2. Set the `CUDA_PATH` environment variable to the installation path.
 
 ---
 
@@ -113,6 +132,6 @@ This project is licensed under the [MIT License](LICENSE).
 
 ## Support
 
-If you encounter any issues, feel free to [open an issue](https://github.com/yourusername/instagram-recipe-scraper/issues) or reach out to `your.email@example.com`.
+If you encounter any issues, feel free to [open an issue](https://github.com/alliecatowo/instagram-recipe-scraper/issues) or reach out to `allisonemilycoleman@gmail.com`.
 
 Happy scraping! 🎉
