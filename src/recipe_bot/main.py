@@ -1,4 +1,5 @@
 import sys
+import os
 from scraper.downloader import InstagramDownloader
 from scraper.transcriber import Transcriber
 from scraper.gpt_processor import GPTProcessor
@@ -12,6 +13,13 @@ def main():
         post_url = sys.argv[1]
 
     downloader = InstagramDownloader(post_url)
+    shortcode = downloader._get_shortcode()
+    video_path = os.path.join("downloads", f"{shortcode}.mp4")
+    recipe_path = os.path.join("recipes", f"recipe_{shortcode}.md")
+
+    if os.path.exists(video_path) and os.path.exists(recipe_path):
+        print(f"Video and recipe for {shortcode} already exist.")
+        return
 
     print("Downloading content...")
     video_path, caption = downloader.download_content()
@@ -28,8 +36,8 @@ def main():
     recipe = gpt_processor.generate_recipe(transcript, caption)
 
     print("Saving recipe...")
-    generator = RecipeGenerator(recipe)
-    generator.save_recipe()
+    generator = RecipeGenerator(recipe, output_dir="recipes")
+    generator.save_recipe(shortcode=shortcode)
 
     print("Done!")
 

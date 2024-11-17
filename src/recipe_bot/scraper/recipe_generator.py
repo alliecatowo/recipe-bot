@@ -6,9 +6,9 @@ class RecipeGenerator:
         self.recipe_text = recipe_text
         self.output_dir = output_dir
 
-    def save_recipe(self):
+    def save_recipe(self, shortcode):
         os.makedirs(self.output_dir, exist_ok=True)
-        output_path = os.path.join(self.output_dir, "recipe.md")
+        output_path = os.path.join(self.output_dir, f"recipe_{shortcode}.md")
         try:
             with open(output_path, "w") as file:
                 file.write(self.recipe_text)

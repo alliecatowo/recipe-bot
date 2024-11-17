@@ -19,7 +19,7 @@ class InstagramDownloader:
             video_url = post.video_url
 
             # Download video directly from the URL
-            video_path = os.path.join(output_dir, "video.mp4")
+            video_path = os.path.join(output_dir, f"{self._get_shortcode()}.mp4")
             self._download_video(video_url, video_path)
 
             return video_path, caption
