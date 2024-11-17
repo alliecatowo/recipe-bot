@@ -22,7 +22,7 @@ class Transcriber:
     def transcribe_audio(self):
         try:
             response = model.transcribe(
-                audio=self.audio_path, language="en", verbose=True
+                audio=self.audio_path, language="en", verbose=True, fp16=False
             )
             return response.get("text", "")
         except Exception as e:
