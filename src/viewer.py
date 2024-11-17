@@ -18,54 +18,89 @@ from prompt_toolkit.application.current import get_app
 logging.basicConfig(level=logging.INFO)
 
 
-def list_recipes(firebase_client):
-    """
-    List all recipes in storage.
+class CLI:
+    def __init__(self, firebase_client):
+        self.firebase_client = firebase_client
+        self.recipes = self.list_recipes()
+        self.recipes.append("Exit")
+        self.selected_index = 0
+        self.text_area = TextArea(text=self.get_recipe_list(), read_only=True)
+        self.layout = Layout(HSplit([Label(text="Select a recipe:"), self.text_area]))
+        self.app = Application(layout=self.layout, key_bindings=self.create_bindings(), full_screen=False)
 
-    Args:
-        firebase_client (FirebaseClient): Firebase client instance.
+    def list_recipes(self):
+        if self.firebase_client.local:
+            recipes_dir = "recipes"
+            return [
+                os.path.join(recipes_dir, f)
+                for f in os.listdir(recipes_dir)
+                if f.endswith(".md")
+            ]
+        else:
+            blobs = self.firebase_client.bucket.list_blobs(prefix="recipes/")
+            return [blob.name for blob in blobs if blob.name.endswith(".md")]
 
-    Returns:
-        list: List of recipe paths.
-    """
-    if firebase_client.local:
-        recipes_dir = "recipes"
-        return [
-            os.path.join(recipes_dir, f)
-            for f in os.listdir(recipes_dir)
-            if f.endswith(".md")
-        ]
-    else:
-        blobs = firebase_client.bucket.list_blobs(prefix="recipes/")
-        return [blob.name for blob in blobs if blob.name.endswith(".md")]
+    def display_recipe(self, recipe_path):
+        recipe_content = self.firebase_client.download_string(recipe_path)
+        print(recipe_content)
 
+    def clear_screen(self):
+        os.system("cls" if os.name == "nt" else "clear")
 
-def display_recipe(firebase_client, recipe_path):
-    """
-    Display the selected recipe in Markdown format.
+    def handle_sigint(self, signum, frame):
+        print("\nExiting...")
+        get_app().exit()
 
-    Args:
-        firebase_client (FirebaseClient): Firebase client instance.
-        recipe_path (str): Path to the recipe file.
-    """
-    recipe_content = firebase_client.download_string(recipe_path)
-    print(recipe_content)
+    def get_recipe_list(self):
+        return "\n".join(
+            [
+                f"{'>' if i == self.selected_index else ' '} {os.path.basename(recipe)}"
+                for i, recipe in enumerate(self.recipes)
+            ]
+        )
 
+    def display_recipe_in_editor(self, recipe_path):
+        if not os.path.exists(recipe_path):
+            recipe_content = self.firebase_client.download_string(recipe_path)
+            with open(recipe_path, "w") as f:
+                f.write(recipe_content)
+        editor = os.getenv("EDITOR", "vi")
+        subprocess.call([editor, recipe_path])
 
-def clear_screen():
-    """
-    Clear the terminal screen.
-    """
-    os.system("cls" if os.name == "nt" else "clear")
+    def on_up(self, event):
+        if self.selected_index > 0:
+            self.selected_index -= 1
+        self.text_area.text = self.get_recipe_list()
 
+    def on_down(self, event):
+        if self.selected_index < len(self.recipes) - 1:
+            self.selected_index += 1
+        self.text_area.text = self.get_recipe_list()
 
-def handle_sigint(signum, frame):
-    """
-    Handle SIGINT (Ctrl+C) signal to exit gracefully.
-    """
-    print("\nExiting...")
-    get_app().exit()
+    def on_enter(self, event):
+        if self.recipes[self.selected_index] == "Exit":
+            self.app.exit()
+        else:
+            self.display_recipe_in_editor(self.recipes[self.selected_index])
+            self.text_area.text = self.get_recipe_list()
+            self.app.invalidate()
+            get_app().invalidate()
 
+    def create_bindings(self):
+        bindings = KeyBindings()
+        bindings.add("up")(self.on_up)
+        bindings.add("down")(self.on_down)
+        bindings.add("enter")(self.on_enter)
+        bindings.add("c-c")(self.exit_app)
+        return bindings
+
+    def exit_app(self, event):
+        self.app.exit()
+
+    def run(self):
+        self.clear_screen()
+        signal.signal(signal.SIGINT, self.handle_sigint)
+        self.app.run()
 
 def main():
     """
@@ -81,77 +116,8 @@ def main():
     args = parser.parse_args()
 
     firebase_client = FirebaseClient(local=args.local)
-
-    recipes = list_recipes(firebase_client)
-    if not recipes:
-        print("No recipes found.")
-        return
-
-    recipes.append("Exit")
-    selected_index = 0
-
-    clear_screen()
-
-    signal.signal(signal.SIGINT, handle_sigint)
-
-    def get_recipe_list():
-        return "\n".join(
-            [
-                f"{'>' if i == selected_index else ' '} {os.path.basename(recipe)}"
-                for i, recipe in enumerate(recipes)
-            ]
-        )
-
-    def display_recipe_in_editor(recipe_path):
-        """
-        Open the selected recipe in the system's default text editor.
-
-        Args:
-            recipe_path (str): Path to the recipe file.
-        """
-        if not os.path.exists(recipe_path):
-            recipe_content = firebase_client.download_string(recipe_path)
-            with open(recipe_path, "w") as f:
-                f.write(recipe_content)
-        editor = os.getenv("EDITOR", "vi")
-        subprocess.call([editor, recipe_path])
-
-    def on_up(event):
-        nonlocal selected_index
-        if selected_index > 0:
-            selected_index -= 1
-        text_area.text = get_recipe_list()
-
-    def on_down(event):
-        nonlocal selected_index
-        if selected_index < len(recipes) - 1:
-            selected_index += 1
-        text_area.text = get_recipe_list()
-
-    def on_enter(event):
-        if recipes[selected_index] == "Exit":
-            app.exit()
-        else:
-            display_recipe_in_editor(recipes[selected_index])
-            text_area.text = get_recipe_list()
-            app.invalidate()
-            get_app().invalidate()  # Explicitly refresh the terminal screen
-
-    bindings = KeyBindings()
-    bindings.add("up")(on_up)
-    bindings.add("down")(on_down)
-    bindings.add("enter")(on_enter)
-
-    def exit_app(event):
-        app.exit()
-
-    bindings.add("c-c")(exit_app)  # Bind Ctrl+C to exit the application
-
-    text_area = TextArea(text=get_recipe_list(), read_only=True)
-    layout = Layout(HSplit([Label(text="Select a recipe:"), text_area]))
-
-    app = Application(layout=layout, key_bindings=bindings, full_screen=False)
-    app.run()
+    cli = CLI(firebase_client)
+    cli.run()
 
 
 if __name__ == "__main__":
