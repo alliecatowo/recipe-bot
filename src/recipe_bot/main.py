@@ -1,11 +1,20 @@
-import sys
 import os
 import logging
+import argparse
+import warnings  # Import warnings module
 from scraper.downloader import InstagramDownloader
 from scraper.transcriber import Transcriber
 from scraper.recipe_generator import RecipeGenerator
 
 logging.basicConfig(level=logging.INFO)
+
+# Suppress specific FutureWarning from torch.load
+warnings.filterwarnings(
+    "ignore",
+    category=FutureWarning,
+    message="You are using `torch.load` with `weights_only=False`",
+)
+
 
 def process_post(post_url, verbose=False):
     downloader = InstagramDownloader(post_url)
@@ -29,23 +38,33 @@ def process_post(post_url, verbose=False):
 
     logging.info("Generating recipe...")
     generator = RecipeGenerator(output_dir="recipes")
-    recipe = generator.generate_recipe(transcript, caption, save=True, shortcode=shortcode, verbose=verbose)
+    recipe = generator.generate_recipe(
+        transcript, caption, save=True, shortcode=shortcode
+    )
 
     if verbose or logging.getLogger().getEffectiveLevel() == logging.DEBUG:
         logging.info(f"Generated recipe:\n{recipe}")
 
     logging.info("Done!")
 
+
 def main():
-    if len(sys.argv) < 2:
-        post_urls = [input("Please enter the Instagram post URL(s): ")]
-    else:
-        post_urls = sys.argv[1:]
+    parser = argparse.ArgumentParser(
+        description="Process Instagram post URLs to generate recipes."
+    )
+    parser.add_argument(
+        "post_urls", nargs="+", help="Instagram post URL(s), seperated by spaces"
+    )
+    parser.add_argument("--debug", action="store_true", help="Enable debug output")
 
-    verbose = '--verbose' in sys.argv or '--debug' in sys.argv
+    args = parser.parse_args()
 
-    for post_url in post_urls:
-        process_post(post_url, verbose)
+    if args.debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+
+    for post_url in args.post_urls:
+        process_post(post_url, verbose=args.debug)
+
 
 if __name__ == "__main__":
     main()

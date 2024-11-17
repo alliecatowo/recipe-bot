@@ -1,18 +1,19 @@
 import whisper
-
 import logging
-
-model = whisper.load_model("small")
 
 
 class Transcriber:
-    def __init__(self, audio_path):
+    def __init__(self, audio_path, model=None):
         self.audio_path = audio_path
+        self.model = whisper.load_model("small") if model is None else model
 
     def transcribe_audio(self, verbose=False):
         try:
-            response = model.transcribe(
-                audio=self.audio_path, language="en", verbose=True, fp16=False
+            response = self.model.transcribe(
+                audio=self.audio_path,
+                language="en",
+                verbose=verbose,
+                fp16=False,
             )
             return response.get("text", "")
         except Exception as e:

@@ -34,6 +34,8 @@ class RecipeGenerator:
         try:
             with open(output_path, "w") as file:
                 file.write(recipe_text)
+            if logging.getLogger().getEffectiveLevel() == logging.DEBUG:
+                logging.debug(f"Generated Recipe is:\n{recipe_text}\n")
             logging.info(f"Recipe saved to {output_path}")
         except Exception as e:
             logging.error(f"Error saving recipe: {e}")
