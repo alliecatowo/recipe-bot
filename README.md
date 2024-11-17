@@ -19,6 +19,7 @@ This project uses:
 - 📥 **Download Instagram Content**: Fetch videos and captions from Instagram posts.
 - 📝 **Markdown Output**: Save recipes as easy-to-read `.md` files.
 - 🧠 **AI-Powered**: Leverages OpenAI's Whisper for transcription and GPT for recipe generation.
+- 👀 **Recipe Viewer**: View and edit saved recipes using a simple CLI interface.
 - ☁️ **Cloud Storage**: Store audio files and recipes in Firebase Storage.
 - 📊 **Metadata Management**: Use Firestore to manage metadata and associations.
 
@@ -111,6 +112,13 @@ The program will:
 6. Store metadata in Firestore.
 
 ---
+
+View and Edit Recipes
+To view and edit recipes using the CLI interface, run:
+```bash
+python src/viewer.py [--local]
+```
+--local: Use local storage instead of Firebase
 
 ## Adding Dependencies
 
