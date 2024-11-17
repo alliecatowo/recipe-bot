@@ -3,12 +3,11 @@ import os
 import logging
 from scraper.downloader import InstagramDownloader
 from scraper.transcriber import Transcriber
-from scraper.gpt_processor import GPTProcessor
 from scraper.recipe_generator import RecipeGenerator
 
 logging.basicConfig(level=logging.INFO)
 
-def process_post(post_url):
+def process_post(post_url, verbose=False):
     downloader = InstagramDownloader(post_url)
     shortcode = downloader._get_shortcode()
     audio_path = os.path.join("downloads", f"{shortcode}.wav")
@@ -29,12 +28,11 @@ def process_post(post_url):
     transcript = transcriber.transcribe_audio()
 
     logging.info("Generating recipe...")
-    gpt_processor = GPTProcessor()
-    recipe = gpt_processor.generate_recipe(transcript, caption)
+    generator = RecipeGenerator(output_dir="recipes")
+    recipe = generator.generate_recipe(transcript, caption, save=True, shortcode=shortcode)
 
-    logging.info("Saving recipe...")
-    generator = RecipeGenerator(recipe, output_dir="recipes")
-    generator.save_recipe(shortcode=shortcode)
+    if verbose or logging.getLogger().getEffectiveLevel() == logging.DEBUG:
+        logging.info(f"Generated recipe:\n{recipe}")
 
     logging.info("Done!")
 
@@ -44,8 +42,10 @@ def main():
     else:
         post_urls = sys.argv[1:]
 
+    verbose = '--verbose' in sys.argv or '--debug' in sys.argv
+
     for post_url in post_urls:
-        process_post(post_url)
+        process_post(post_url, verbose)
 
 if __name__ == "__main__":
     main()
