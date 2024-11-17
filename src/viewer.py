@@ -109,6 +109,10 @@ def main():
         Args:
             recipe_path (str): Path to the recipe file.
         """
+        if not os.path.exists(recipe_path):
+            recipe_content = firebase_client.download_string(recipe_path)
+            with open(recipe_path, "w") as f:
+                f.write(recipe_content)
         editor = os.getenv("EDITOR", "vi")
         subprocess.call([editor, recipe_path])
 
