@@ -17,6 +17,15 @@ warnings.filterwarnings(
 
 
 def process_post(downloader, post_url, verbose=False, local=False):
+    """
+    Process an Instagram post to generate a recipe.
+
+    Args:
+        downloader (InstagramDownloader): Downloader instance.
+        post_url (str): URL of the Instagram post.
+        verbose (bool): Whether to enable verbose output.
+        local (bool): Whether to save files locally or to Firebase.
+    """
     shortcode = downloader._get_shortcode(post_url)
     audio_path = os.path.join("downloads", f"{shortcode}.mp3")
     recipe_path = os.path.join("recipes", f"recipe_{shortcode}.md")
@@ -62,6 +71,9 @@ def process_post(downloader, post_url, verbose=False, local=False):
 
 
 def main():
+    """
+    Main function to parse arguments and process Instagram posts.
+    """
     parser = argparse.ArgumentParser(
         description="Process Instagram post URLs to generate recipes."
     )
@@ -78,10 +90,10 @@ def main():
     if args.debug:
         logging.getLogger().setLevel(logging.DEBUG)
 
-    downloader = InstagramDownloader(local=args.local)  # Create downloader object
+    downloader = InstagramDownloader(local=args.local)
 
     for post_url in args.post_urls:
-        process_post(downloader, post_url, verbose=args.debug, local=args.local)  # Pass downloader by reference
+        process_post(downloader, post_url, verbose=args.debug, local=args.local)
 
 if __name__ == "__main__":
     main()

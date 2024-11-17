@@ -8,18 +8,32 @@ from firebase_admin import credentials, firestore, storage
 
 
 class InstagramDownloader:
+    """
+    A class to download Instagram posts and handle Firebase storage.
+
+    Attributes:
+        local (bool): Whether to save files locally or to Firebase.
+        loader (instaloader.Instaloader): Instaloader instance for downloading posts.
+        firebase_app (firebase_admin.App): Firebase app instance.
+        db (firestore.Client): Firestore client.
+        bucket (storage.Bucket): Firebase storage bucket.
+    """
+
     def __init__(self, local=False):
+        """
+        Initialize the InstagramDownloader.
+
+        Args:
+            local (bool): Whether to save files locally or to Firebase.
+        """
         self.loader = instaloader.Instaloader()
         self.local = local
         self.firebase_app = None
         if not local:
             try:
-                # Path to the service account key file
                 service_account_path = os.path.join(
                     os.path.dirname(__file__), "../../../.private/firebasekey.json"
                 )
-
-                # Initialize Firebase Admin SDK with the service account key file
                 if not firebase_admin._apps:
                     cred = credentials.Certificate(service_account_path)
                     self.firebase_app = firebase_admin.initialize_app(
@@ -39,6 +53,16 @@ class InstagramDownloader:
                 raise
 
     def download_content(self, post_url, output_dir="downloads"):
+        """
+        Download content from an Instagram post.
+
+        Args:
+            post_url (str): URL of the Instagram post.
+            output_dir (str): Directory to save the downloaded content.
+
+        Returns:
+            tuple: Path to the audio file and the post caption.
+        """
         os.makedirs(output_dir, exist_ok=True)
         try:
             post = instaloader.Post.from_shortcode(
@@ -66,9 +90,25 @@ class InstagramDownloader:
             return None, None
 
     def _get_shortcode(self, post_url):
+        """
+        Extract the shortcode from the post URL.
+
+        Args:
+            post_url (str): URL of the Instagram post.
+
+        Returns:
+            str: Shortcode of the post.
+        """
         return post_url.split("/")[-2]
 
     def _download_video(self, video_url, output_path):
+        """
+        Download video from the given URL.
+
+        Args:
+            video_url (str): URL of the video.
+            output_path (str): Path to save the downloaded video.
+        """
         try:
             response = requests.get(video_url, stream=True)
             response.raise_for_status()
@@ -81,6 +121,13 @@ class InstagramDownloader:
             logging.error(f"Error downloading video: {e}")
 
     def _convert_to_audio(self, video_path, audio_path):
+        """
+        Convert video to audio.
+
+        Args:
+            video_path (str): Path to the video file.
+            audio_path (str): Path to save the converted audio file.
+        """
         try:
             audio = AudioSegment.from_file(video_path, format="mp4")
             audio.export(audio_path, format="mp3", bitrate="192k")
@@ -89,6 +136,12 @@ class InstagramDownloader:
             logging.error(f"Error converting video to audio: {e}")
 
     def _upload_to_firebase(self, audio_path):
+        """
+        Upload audio file to Firebase Storage.
+
+        Args:
+            audio_path (str): Path to the audio file.
+        """
         try:
             blob = self.bucket.blob(f"audio/{os.path.basename(audio_path)}")
             blob.upload_from_filename(audio_path)
@@ -99,6 +152,15 @@ class InstagramDownloader:
             logging.error(f"Error uploading audio to Firebase Storage: {e}")
 
     def file_exists_in_firebase(self, path):
+        """
+        Check if a file exists in Firebase Storage.
+
+        Args:
+            path (str): Path to the file in Firebase Storage.
+
+        Returns:
+            bool: True if the file exists, False otherwise.
+        """
         try:
             blob = self.bucket.blob(path)
             return blob.exists()
