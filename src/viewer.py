@@ -21,14 +21,14 @@ logging.basicConfig(level=logging.INFO)
 class CLI:
     def __init__(self, firebase_client):
         self.firebase_client = firebase_client
-        self.recipes = self.list_recipes()
+        self.recipes = self._list_recipes()
         self.recipes.append("Exit")
         self.selected_index = 0
-        self.text_area = TextArea(text=self.get_recipe_list(), read_only=True)
+        self.text_area = TextArea(text=self._get_recipe_list(), read_only=True)
         self.layout = Layout(HSplit([Label(text="Select a recipe:"), self.text_area]))
-        self.app = Application(layout=self.layout, key_bindings=self.create_bindings(), full_screen=False)
+        self.app = Application(layout=self.layout, key_bindings=self._create_bindings(), full_screen=False)
 
-    def list_recipes(self):
+    def _list_recipes(self):
         if self.firebase_client.local:
             recipes_dir = "recipes"
             return [
@@ -40,18 +40,18 @@ class CLI:
             blobs = self.firebase_client.bucket.list_blobs(prefix="recipes/")
             return [blob.name for blob in blobs if blob.name.endswith(".md")]
 
-    def display_recipe(self, recipe_path):
+    def _display_recipe(self, recipe_path):
         recipe_content = self.firebase_client.download_string(recipe_path)
         print(recipe_content)
 
-    def clear_screen(self):
+    def _clear_screen(self):
         os.system("cls" if os.name == "nt" else "clear")
 
-    def handle_sigint(self, signum, frame):
+    def _handle_sigint(self, signum, frame):
         print("\nExiting...")
         get_app().exit()
 
-    def get_recipe_list(self):
+    def _get_recipe_list(self):
         return "\n".join(
             [
                 f"{'>' if i == self.selected_index else ' '} {os.path.basename(recipe)}"
@@ -59,7 +59,7 @@ class CLI:
             ]
         )
 
-    def display_recipe_in_editor(self, recipe_path):
+    def _display_recipe_in_editor(self, recipe_path):
         if not os.path.exists(recipe_path):
             recipe_content = self.firebase_client.download_string(recipe_path)
             with open(recipe_path, "w") as f:
@@ -67,39 +67,39 @@ class CLI:
         editor = os.getenv("EDITOR", "vi")
         subprocess.call([editor, recipe_path])
 
-    def on_up(self, event):
+    def _on_up(self, event):
         if self.selected_index > 0:
             self.selected_index -= 1
-        self.text_area.text = self.get_recipe_list()
+        self.text_area.text = self._get_recipe_list()
 
-    def on_down(self, event):
+    def _on_down(self, event):
         if self.selected_index < len(self.recipes) - 1:
             self.selected_index += 1
-        self.text_area.text = self.get_recipe_list()
+        self.text_area.text = self._get_recipe_list()
 
-    def on_enter(self, event):
+    def _on_enter(self, event):
         if self.recipes[self.selected_index] == "Exit":
             self.app.exit()
         else:
-            self.display_recipe_in_editor(self.recipes[self.selected_index])
-            self.text_area.text = self.get_recipe_list()
+            self._display_recipe_in_editor(self.recipes[self.selected_index])
+            self.text_area.text = self._get_recipe_list()
             self.app.invalidate()
             get_app().invalidate()
 
-    def create_bindings(self):
+    def _create_bindings(self):
         bindings = KeyBindings()
-        bindings.add("up")(self.on_up)
-        bindings.add("down")(self.on_down)
-        bindings.add("enter")(self.on_enter)
-        bindings.add("c-c")(self.exit_app)
+        bindings.add("up")(self._on_up)
+        bindings.add("down")(self._on_down)
+        bindings.add("enter")(self._on_enter)
+        bindings.add("c-c")(self._exit_app)
         return bindings
 
-    def exit_app(self, event):
+    def _exit_app(self, event):
         self.app.exit()
 
     def run(self):
-        self.clear_screen()
-        signal.signal(signal.SIGINT, self.handle_sigint)
+        self._clear_screen()
+        signal.signal(signal.SIGINT, self._handle_sigint)
         self.app.run()
 
 def main():
