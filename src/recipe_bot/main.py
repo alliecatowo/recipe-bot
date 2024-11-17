@@ -40,7 +40,7 @@ def process_post(post_url):
 
 def main():
     if len(sys.argv) < 2:
-        post_urls = [input("Please enter the Instagram post URL: ")]
+        post_urls = [input("Please enter the Instagram post URL(s): ")]
     else:
         post_urls = sys.argv[1:]
 
