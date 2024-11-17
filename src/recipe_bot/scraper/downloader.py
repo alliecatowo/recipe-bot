@@ -36,6 +36,9 @@ class InstagramDownloader:
 
         Returns:
             tuple: Path to the audio file and the post caption.
+
+        Raises:
+            Exception: If there is an error during download.
         """
         os.makedirs(output_dir, exist_ok=True)
         try:
@@ -45,20 +48,16 @@ class InstagramDownloader:
             caption = post.caption
             video_url = post.video_url
 
-            audio_path = os.path.join(
-                output_dir, f"{self._get_shortcode(post_url)}.mp3"
-            )
+            audio_path = os.path.join(output_dir, f"{self._get_shortcode(post_url)}.mp3")
             if not os.path.exists(audio_path):
-                video_path = os.path.join(
-                    output_dir, f"{self._get_shortcode(post_url)}.mp4"
-                )
+                video_path = os.path.join(output_dir, f"{self._get_shortcode(post_url)}.mp4")
                 self._download_video(video_url, video_path)
                 self._convert_to_audio(video_path, audio_path)
 
             return audio_path, caption
         except Exception as e:
             logging.error(f"Error downloading content: {e}")
-            return None, None
+            raise e
 
     def _get_shortcode(self, post_url):
         """
@@ -79,6 +78,9 @@ class InstagramDownloader:
         Args:
             video_url (str): URL of the video.
             output_path (str): Path to save the downloaded video.
+
+        Raises:
+            Exception: If there is an error during download.
         """
         try:
             response = requests.get(video_url, stream=True)
@@ -90,6 +92,7 @@ class InstagramDownloader:
             logging.info(f"Video successfully downloaded to {output_path}")
         except requests.RequestException as e:
             logging.error(f"Error downloading video: {e}")
+            raise e
 
     def _convert_to_audio(self, video_path, audio_path):
         """
@@ -98,6 +101,9 @@ class InstagramDownloader:
         Args:
             video_path (str): Path to the video file.
             audio_path (str): Path to save the converted audio file.
+
+        Raises:
+            Exception: If there is an error during conversion.
         """
         try:
             audio = AudioSegment.from_file(video_path, format="mp4")
@@ -105,3 +111,4 @@ class InstagramDownloader:
             logging.info(f"Audio extracted to {audio_path}")
         except Exception as e:
             logging.error(f"Error converting video to audio: {e}")
+            raise e
