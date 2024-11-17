@@ -4,15 +4,16 @@ import logging
 import argparse
 import firebase_admin
 from firebase_admin import credentials, storage
-
+import subprocess
+import signal
 
 from firebase.client import FirebaseClient
-from prompt_toolkit import prompt
+from prompt_toolkit import Application
 from prompt_toolkit.key_binding import KeyBindings
-from prompt_toolkit.application import Application
 from prompt_toolkit.layout import Layout
 from prompt_toolkit.layout.containers import HSplit, Window
 from prompt_toolkit.widgets import TextArea, Label
+from prompt_toolkit.application.current import get_app
 
 logging.basicConfig(level=logging.INFO)
 
@@ -51,6 +52,21 @@ def display_recipe(firebase_client, recipe_path):
     print(recipe_content)
 
 
+def clear_screen():
+    """
+    Clear the terminal screen.
+    """
+    os.system("cls" if os.name == "nt" else "clear")
+
+
+def handle_sigint(signum, frame):
+    """
+    Handle SIGINT (Ctrl+C) signal to exit gracefully.
+    """
+    print("\nExiting...")
+    get_app().exit()
+
+
 def main():
     """
     Main function to list and display recipes.
@@ -71,7 +87,12 @@ def main():
         print("No recipes found.")
         return
 
+    recipes.append("Exit")
     selected_index = 0
+
+    clear_screen()
+
+    signal.signal(signal.SIGINT, handle_sigint)
 
     def get_recipe_list():
         return "\n".join(
@@ -80,6 +101,16 @@ def main():
                 for i, recipe in enumerate(recipes)
             ]
         )
+
+    def display_recipe_in_editor(recipe_path):
+        """
+        Open the selected recipe in the system's default text editor.
+
+        Args:
+            recipe_path (str): Path to the recipe file.
+        """
+        editor = os.getenv("EDITOR", "vi")
+        subprocess.call([editor, recipe_path])
 
     def on_up(event):
         nonlocal selected_index
@@ -94,18 +125,28 @@ def main():
         text_area.text = get_recipe_list()
 
     def on_enter(event):
-        display_recipe(firebase_client, recipes[selected_index])
-        app.exit()
+        if recipes[selected_index] == "Exit":
+            app.exit()
+        else:
+            display_recipe_in_editor(recipes[selected_index])
+            text_area.text = get_recipe_list()
+            app.invalidate()
+            get_app().invalidate()  # Explicitly refresh the terminal screen
 
     bindings = KeyBindings()
     bindings.add("up")(on_up)
     bindings.add("down")(on_down)
     bindings.add("enter")(on_enter)
 
+    def exit_app(event):
+        app.exit()
+
+    bindings.add("c-c")(exit_app)  # Bind Ctrl+C to exit the application
+
     text_area = TextArea(text=get_recipe_list(), read_only=True)
     layout = Layout(HSplit([Label(text="Select a recipe:"), text_area]))
 
-    app = Application(layout=layout, key_bindings=bindings, full_screen=True)
+    app = Application(layout=layout, key_bindings=bindings, full_screen=False)
     app.run()
 
 
