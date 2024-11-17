@@ -167,3 +167,77 @@ class InstagramDownloader:
         except Exception as e:
             logging.error(f"Error checking file existence in Firebase: {e}")
             return False
+
+    def transcript_exists_in_firestore(self, shortcode):
+        """
+        Check if a transcript exists in Firestore.
+
+        Args:
+            shortcode (str): Shortcode of the Instagram post.
+
+        Returns:
+            bool: True if the transcript exists, False otherwise.
+        """
+        try:
+            doc_ref = self.db.collection("transcripts").document(shortcode)
+            return doc_ref.get().exists
+        except Exception as e:
+            logging.error(f"Error checking transcript existence in Firestore: {e}")
+            return False
+
+    def recipe_exists_in_firestore(self, shortcode):
+        """
+        Check if a recipe exists in Firestore.
+
+        Args:
+            shortcode (str): Shortcode of the Instagram post.
+
+        Returns:
+            bool: True if the recipe exists, False otherwise.
+        """
+        try:
+            doc_ref = self.db.collection("recipes").document(shortcode)
+            return doc_ref.get().exists
+        except Exception as e:
+            logging.error(f"Error checking recipe existence in Firestore: {e}")
+            return False
+
+    def get_transcript_from_firestore(self, shortcode):
+        """
+        Retrieve a transcript from Firestore.
+
+        Args:
+            shortcode (str): Shortcode of the Instagram post.
+
+        Returns:
+            str: Transcript text.
+        """
+        try:
+            doc_ref = self.db.collection("transcripts").document(shortcode)
+            doc = doc_ref.get()
+            if doc.exists:
+                return doc.to_dict().get("transcript", "")
+            return ""
+        except Exception as e:
+            logging.error(f"Error retrieving transcript from Firestore: {e}")
+            return ""
+
+    def get_recipe_from_firestore(self, shortcode):
+        """
+        Retrieve a recipe from Firestore.
+
+        Args:
+            shortcode (str): Shortcode of the Instagram post.
+
+        Returns:
+            str: Recipe text.
+        """
+        try:
+            doc_ref = self.db.collection("recipes").document(shortcode)
+            doc = doc_ref.get()
+            if doc.exists:
+                return doc.to_dict().get("recipe", "")
+            return ""
+        except Exception as e:
+            logging.error(f"Error retrieving recipe from Firestore: {e}")
+            return ""

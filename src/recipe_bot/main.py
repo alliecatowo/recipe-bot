@@ -2,6 +2,7 @@ import os
 import logging
 import argparse
 import warnings
+import instaloader
 from scraper.downloader import InstagramDownloader
 from scraper.transcriber import Transcriber
 from scraper.recipe_generator import RecipeGenerator
@@ -30,32 +31,53 @@ def process_post(downloader, post_url, verbose=False, local=False):
     audio_path = os.path.join("downloads", f"{shortcode}.mp3")
     recipe_path = os.path.join("recipes", f"recipe_{shortcode}.md")
 
+    transcript = ""
+    caption = ""
+
     if local:
-        if os.path.exists(audio_path) and os.path.exists(recipe_path):
-            logging.info(f"Audio and recipe for {shortcode} already exist locally.")
+        if os.path.exists(audio_path):
+            logging.info(f"Audio for {shortcode} already exists locally.")
+        if os.path.exists(recipe_path):
+            logging.info(f"Recipe for {shortcode} already exists locally.")
             return
     else:
-        if downloader.file_exists_in_firebase(f"audio/{shortcode}.mp3") and downloader.file_exists_in_firebase(f"recipes/recipe_{shortcode}.md"):
-            logging.info(f"Audio and recipe for {shortcode} already exist in Firebase.")
+        if downloader.file_exists_in_firebase(f"audio/{shortcode}.mp3"):
+            logging.info(f"Audio for {shortcode} already exists in Firebase.")
+        if downloader.transcript_exists_in_firestore(shortcode):
+            logging.info(f"Transcript for {shortcode} already exists in Firestore.")
+            transcript = downloader.get_transcript_from_firestore(shortcode)
+        if downloader.recipe_exists_in_firestore(shortcode):
+            logging.info(f"Recipe for {shortcode} already exists in Firestore.")
+            recipe = downloader.get_recipe_from_firestore(shortcode)
+            if verbose or logging.getLogger().getEffectiveLevel() == logging.DEBUG:
+                logging.info(f"Generated recipe:\n{recipe}")
+            logging.info("Done!")
             return
 
-    logging.info("Downloading content...")
-    audio_path, caption = downloader.download_content(post_url)
-
     if not os.path.exists(audio_path):
-        logging.error(f"Failed to download audio: {audio_path}")
-        return
-
-    logging.info("Transcribing audio...")
-    transcriber = Transcriber(audio_path)
-    transcript = transcriber.transcribe_audio(verbose)
+        logging.info("Downloading content...")
+        audio_path, caption = downloader.download_content(post_url)
+        if not os.path.exists(audio_path):
+            logging.error(f"Failed to download audio: {audio_path}")
+            return
 
     if not transcript:
-        logging.error("Failed to transcribe audio.")
-        return
+        logging.info("Transcribing audio...")
+        transcriber = Transcriber(audio_path)
+        transcript = transcriber.transcribe_audio(verbose)
+        if not transcript:
+            logging.error("Failed to transcribe audio.")
+            return
+
+    if not caption:
+        logging.info("Fetching caption...")
+        post = instaloader.Post.from_shortcode(downloader.loader.context, shortcode)
+        caption = post.caption
 
     logging.info("Generating recipe...")
-    generator = RecipeGenerator(output_dir="recipes", local=local, firebase_app=downloader.firebase_app)
+    generator = RecipeGenerator(
+        output_dir="recipes", local=local, firebase_app=downloader.firebase_app
+    )
     try:
         recipe = generator.generate_recipe(
             transcript, caption, save=True, shortcode=shortcode
@@ -94,6 +116,7 @@ def main():
 
     for post_url in args.post_urls:
         process_post(downloader, post_url, verbose=args.debug, local=args.local)
+
 
 if __name__ == "__main__":
     main()
