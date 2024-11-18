@@ -1,8 +1,12 @@
+import logging
+import os
 from typing import Optional
 
-from recipe import Recipe
+from google.cloud import firestore  # type: ignore
 
 from firebase.client import FirebaseClient
+
+from .recipe import Recipe
 
 
 class Cookbook:
@@ -28,4 +32,32 @@ class Cookbook:
 
     def add_recipe(self, recipe: Recipe) -> None:
         recipe.save()
-        self.firebase_client.add_recipe_to_cookbook(self.cookbook_id, recipe.recipe_id)
+        if self.firebase_client.local:
+            local_path = f"cookbooks/{self.cookbook_id}.json"
+            if os.path.exists(local_path):
+                try:
+                    with open(local_path, "r") as file:
+                        cookbook_data = eval(file.read())
+                    cookbook_data["recipes"].append(recipe.recipe_id)
+                    with open(local_path, "w") as file:
+                        file.write(str(cookbook_data))
+                    logging.info(
+                        f"Recipe {recipe.recipe_id} associated with cookbook {self.cookbook_id} locally."
+                    )
+                except Exception as e:
+                    logging.error(f"Error associating recipe locally: {e}")
+            else:
+                logging.error(f"Cookbook {self.cookbook_id} does not exist locally.")
+        else:
+            try:
+                cookbook_ref = self.firebase_client.db.collection("cookbooks").document(
+                    self.cookbook_id
+                )
+                cookbook_ref.update(
+                    {"recipes": firestore.ArrayUnion([recipe.recipe_id])}
+                )
+                logging.info(
+                    f"Recipe {recipe.recipe_id} associated with cookbook {self.cookbook_id}."
+                )
+            except Exception as e:
+                logging.error(f"Error associating recipe: {e}")

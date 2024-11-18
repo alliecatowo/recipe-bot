@@ -1,12 +1,14 @@
 import json
 import logging
 import os
+import uuid
 from typing import Dict, List, Optional, Union
 
 import openai
 
 from config.config import OPENAI_API_KEY
 from firebase.client import FirebaseClient
+from models.recipe import Recipe
 
 openai.api_key = OPENAI_API_KEY
 
@@ -72,17 +74,18 @@ class RecipeGenerator:
             return 0
 
     def generate_recipe(
-        self, transcript: str, caption: str
-    ) -> Dict[str, Union[str, List[str]]]:
+        self, transcript: str, caption: str, firebase_client: FirebaseClient
+    ) -> Recipe:
         """
         Generate a recipe from the transcript and caption.
 
         Args:
             transcript (str): Transcribed text.
             caption (str): Instagram post caption.
+            firebase_client (FirebaseClient): Firebase client instance.
 
         Returns:
-            dict: Generated recipe data.
+            Recipe: Generated recipe instance.
         """
         likelihood = self.classify_transcript(transcript, caption)
         if likelihood < 85:
@@ -102,7 +105,7 @@ class RecipeGenerator:
             f'  "title": "Recipe Title",\n'
             f'  "ingredients": ["ingredient 1", "ingredient 2"],\n'
             f'  "instructions": ["step 1", "step 2"],\n'
-            f'  "notes": "Additional notes"\n'
+            f'  "notes": "Additional notes",\n'
             f'  "categories": ["category 1", "category 2"]\n'
             f"}}\n"
         )
@@ -115,7 +118,16 @@ class RecipeGenerator:
             )
             recipe_json = response.choices[0].message.content.strip()
             recipe_data = json.loads(recipe_json)
-            return recipe_data
+            recipe_data["recipe_id"] = str(uuid.uuid4())  # Add unique UUID
+            return Recipe(
+                recipe_id=recipe_data["recipe_id"],
+                title=recipe_data["title"],
+                ingredients=recipe_data["ingredients"],
+                instructions=recipe_data["instructions"],
+                categories=recipe_data["categories"],
+                notes=recipe_data.get("notes"),
+                firebase_client=firebase_client,
+            )
         except json.JSONDecodeError as e:
             logging.error(f"Failed to parse recipe JSON: {e}")
             raise ValueError("Invalid recipe format received from OpenAI.")

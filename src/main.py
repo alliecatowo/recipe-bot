@@ -6,13 +6,13 @@ import warnings
 
 import instaloader
 
-from firebase.client import FirebaseClient
-from models.cookbook import Cookbook
-from models.recipe import Recipe
-from models.user import User
-from scraper.downloader import InstagramDownloader
-from scraper.recipe_generator import RecipeGenerator
-from scraper.transcriber import Transcriber
+from .firebase.client import FirebaseClient
+from .models.cookbook import Cookbook
+from .models.recipe import Recipe
+from .models.user import User
+from .scraper.downloader import InstagramDownloader
+from .scraper.recipe_generator import RecipeGenerator
+from .scraper.transcriber import Transcriber
 
 logging.basicConfig(level=logging.INFO)
 
@@ -148,6 +148,14 @@ def process_post(
     audio_path = os.path.join("downloads", f"{shortcode}.mp3")
     recipe_path = os.path.join("recipes", f"recipe_{shortcode}.md")
 
+    # Check if the recipe already exists for the user
+    user_recipes = user.get_user_recipes()
+    if any(recipe.get("shortcode") == shortcode for recipe in user_recipes):
+        logging.info(
+            f"Recipe for shortcode {shortcode} already exists for user {user.user_id}."
+        )
+        return
+
     try:
         caption = get_audio(
             downloader, post_url, firebase_client, shortcode, audio_path, local
@@ -162,16 +170,7 @@ def process_post(
 
     logging.info("Generating recipe...")
     try:
-        recipe_data = generator.generate_recipe(transcript, caption)
-        recipe = Recipe(
-            recipe_id=shortcode,
-            title=recipe_data.get("title"),
-            ingredients=recipe_data.get("ingredients"),
-            instructions=recipe_data.get("instructions"),
-            notes=recipe_data.get("notes"),
-            categories=recipe_data.get("categories"),
-            firebase_client=firebase_client,
-        )
+        recipe = generator.generate_recipe(transcript, caption, firebase_client)
         cookbook.add_recipe(recipe)
     except Exception as e:
         logging.error(f"Error during recipe generation or saving: {e}")
@@ -214,8 +213,9 @@ def main() -> None:
 
     # Prompt user for their information or generate IDs
     user_id: str = input("Enter your user ID (or press Enter to generate one): ")
-    user_id = str(uuid.uuid4())
-    logging.info(f"Generated user ID: {user_id}")
+    if not user_id:
+        user_id = str(uuid.uuid4())
+        logging.info(f"Generated user ID: {user_id}")
 
     user_name: str = input("Enter your name: ")
     user_email: str = input("Enter your email: ")

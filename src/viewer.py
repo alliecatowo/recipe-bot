@@ -6,8 +6,6 @@ import subprocess
 import sys
 from typing import Any, List, Tuple, Union
 
-import firebase_admin
-from firebase_admin import credentials, storage
 from prompt_toolkit import Application
 from prompt_toolkit.application.current import get_app
 from prompt_toolkit.key_binding import KeyBindings
