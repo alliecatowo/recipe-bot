@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from typing import Dict, List, Optional, Union
 
 import openai
 
@@ -20,7 +21,12 @@ class RecipeGenerator:
         firebase_client (FirebaseClient): Firebase client instance.
     """
 
-    def __init__(self, output_dir="recipes", local=False, firebase_client=None):
+    def __init__(
+        self,
+        output_dir: str = "recipes",
+        local: bool = False,
+        firebase_client: Optional[FirebaseClient] = None,
+    ) -> None:
         """
         Initialize the RecipeGenerator.
 
@@ -35,7 +41,7 @@ class RecipeGenerator:
         if not local:
             logging.info("Firebase initialized successfully.")
 
-    def classify_transcript(self, transcript, caption):
+    def classify_transcript(self, transcript: str, caption: str) -> int:
         """
         Classify the likelihood that the transcript contains a recipe.
 
@@ -65,7 +71,9 @@ class RecipeGenerator:
             logging.error(f"Error during classification: {e}")
             return 0
 
-    def generate_recipe(self, transcript, caption):
+    def generate_recipe(
+        self, transcript: str, caption: str
+    ) -> Dict[str, Union[str, List[str]]]:
         """
         Generate a recipe from the transcript and caption.
 
@@ -77,7 +85,7 @@ class RecipeGenerator:
             dict: Generated recipe data.
         """
         likelihood = self.classify_transcript(transcript, caption)
-        if (likelihood < 85):
+        if likelihood < 85:
             logging.info("Transcript is unlikely to contain a recipe.")
             raise ValueError("Transcript does not contain a recipe.")
 
@@ -115,7 +123,9 @@ class RecipeGenerator:
             logging.error(f"Error during recipe generation: {e}")
             raise e
 
-    def format_recipe_as_markdown(self, recipe_data):
+    def format_recipe_as_markdown(
+        self, recipe_data: Dict[str, Union[str, List[str]]]
+    ) -> str:
         """
         Format the recipe data as Markdown.
 
@@ -140,7 +150,9 @@ class RecipeGenerator:
                 markdown_content += f"- {category}\n"
         return markdown_content
 
-    def save_recipe(self, recipe_data, shortcode):
+    def save_recipe(
+        self, recipe_data: Dict[str, Union[str, List[str]]], shortcode: str
+    ) -> None:
         """
         Save the generated recipe.
 

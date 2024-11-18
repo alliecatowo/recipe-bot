@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import Tuple
 
 import instaloader
 import requests
@@ -15,7 +16,7 @@ class InstagramDownloader:
         loader (instaloader.Instaloader): Instaloader instance for downloading posts.
     """
 
-    def __init__(self, local=False):
+    def __init__(self, local: bool = False) -> None:
         """
         Initialize the InstagramDownloader.
 
@@ -27,7 +28,9 @@ class InstagramDownloader:
         if not local:
             logging.info("Firebase initialized successfully.")
 
-    def download_content(self, post_url, output_dir="downloads"):
+    def download_content(
+        self, post_url: str, output_dir: str = "downloads"
+    ) -> Tuple[str, str]:
         """
         Download content from an Instagram post.
 
@@ -49,9 +52,13 @@ class InstagramDownloader:
             caption = post.caption
             video_url = post.video_url
 
-            audio_path = os.path.join(output_dir, f"{self._get_shortcode(post_url)}.mp3")
+            audio_path = os.path.join(
+                output_dir, f"{self._get_shortcode(post_url)}.mp3"
+            )
             if not os.path.exists(audio_path):
-                video_path = os.path.join(output_dir, f"{self._get_shortcode(post_url)}.mp4")
+                video_path = os.path.join(
+                    output_dir, f"{self._get_shortcode(post_url)}.mp4"
+                )
                 self._download_video(video_url, video_path)
                 self._convert_to_audio(video_path, audio_path)
 
@@ -60,7 +67,7 @@ class InstagramDownloader:
             logging.error(f"Error downloading content: {e}")
             raise e
 
-    def _get_shortcode(self, post_url):
+    def _get_shortcode(self, post_url: str) -> str:
         """
         Extract the shortcode from the post URL.
 
@@ -72,7 +79,7 @@ class InstagramDownloader:
         """
         return post_url.split("/")[-2]
 
-    def _download_video(self, video_url, output_path):
+    def _download_video(self, video_url: str, output_path: str) -> None:
         """
         Download video from the given URL.
 
@@ -95,7 +102,7 @@ class InstagramDownloader:
             logging.error(f"Error downloading video: {e}")
             raise e
 
-    def _convert_to_audio(self, video_path, audio_path):
+    def _convert_to_audio(self, video_path: str, audio_path: str) -> None:
         """
         Convert video to audio.
 
