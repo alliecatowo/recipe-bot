@@ -1,8 +1,8 @@
 import logging
 import os
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
-import firebase_admin
+import firebase_admin  # type: ignore
 from firebase_admin import credentials, firestore, storage
 
 
@@ -293,59 +293,3 @@ class FirebaseClient:
                 logging.info(f"Recipe {recipe_id} saved in 'recipes' collection.")
             except Exception as e:
                 logging.error(f"Error saving recipe: {e}")
-
-    def add_recipe_to_cookbook(
-        self,
-        cookbook_id: str,
-        recipe_id: str,
-        user_id: Optional[str] = None,
-        recipe_data: Optional[Dict] = None,
-    ) -> None:
-        """Add a recipe to a cookbook or associate a recipe with a cookbook."""
-        if self.local:
-            if user_id and recipe_data:
-                local_path = (
-                    f"users/{user_id}/cookbooks/{cookbook_id}/recipes/{recipe_id}.json"
-                )
-                os.makedirs(os.path.dirname(local_path), exist_ok=True)
-                with open(local_path, "w") as file:
-                    file.write(str(recipe_data))
-            else:
-                local_path = f"cookbooks/{cookbook_id}.json"
-                if os.path.exists(local_path):
-                    try:
-                        with open(local_path, "r") as file:
-                            cookbook_data = eval(file.read())
-                        cookbook_data["recipes"].append(recipe_id)
-                        with open(local_path, "w") as file:
-                            file.write(str(cookbook_data))
-                        logging.info(
-                            f"Recipe {recipe_id} associated with cookbook {cookbook_id} locally."
-                        )
-                    except Exception as e:
-                        logging.error(f"Error associating recipe locally: {e}")
-                else:
-                    logging.error(f"Cookbook {cookbook_id} does not exist locally.")
-        else:
-            try:
-                if user_id and recipe_data:
-                    recipe_ref = (
-                        self.db.collection("users")
-                        .document(user_id)
-                        .collection("cookbooks")
-                        .document(cookbook_id)
-                        .collection("recipes")
-                        .document(recipe_id)
-                    )
-                    recipe_ref.set(recipe_data)
-                    logging.info(
-                        f"Recipe {recipe_id} added to cookbook {cookbook_id} for user {user_id}."
-                    )
-                else:
-                    cookbook_ref = self.db.collection("cookbooks").document(cookbook_id)
-                    cookbook_ref.update({"recipes": firestore.ArrayUnion([recipe_id])})
-                    logging.info(
-                        f"Recipe {recipe_id} associated with cookbook {cookbook_id}."
-                    )
-            except Exception as e:
-                logging.error(f"Error adding or associating recipe: {e}")

@@ -4,7 +4,7 @@ from typing import Tuple
 
 import instaloader
 import requests
-from pydub import AudioSegment
+from pydub import AudioSegment  # type: ignore
 
 
 class InstagramDownloader:

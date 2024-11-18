@@ -1,7 +1,7 @@
 import logging
 from typing import Optional
 
-import whisper
+import whisper  # type: ignore
 
 
 class Transcriber:
@@ -13,7 +13,7 @@ class Transcriber:
         model (whisper.Model): Whisper model instance.
     """
 
-    def __init__(self, audio_path: str, model: Optional[whisper.Model] = None) -> None:
+    def __init__(self, audio_path: str) -> None:
         """
         Initialize the Transcriber.
 
@@ -22,7 +22,7 @@ class Transcriber:
             model (whisper.Model, optional): Whisper model instance. Defaults to None.
         """
         self.audio_path = audio_path
-        self.model = whisper.load_model("small") if model is None else model
+        self.model = whisper.load_model("small")
 
     def transcribe_audio(self, verbose: bool = False) -> str:
         """
