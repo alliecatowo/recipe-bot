@@ -1,5 +1,10 @@
 {
     // "explorer.excludeGitIgnore": true,
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/.venv": true,
+        "**/.pdm-python": true
+    },
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter",
         "editor.formatOnSave": true
