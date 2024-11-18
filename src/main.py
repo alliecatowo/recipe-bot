@@ -7,6 +7,10 @@ from scraper.downloader import InstagramDownloader
 from scraper.transcriber import Transcriber
 from scraper.recipe_generator import RecipeGenerator
 from firebase.client import FirebaseClient
+from models.user import User
+from models.cookbook import Cookbook
+from models.recipe import Recipe
+import uuid
 
 logging.basicConfig(level=logging.INFO)
 
@@ -102,13 +106,16 @@ def get_caption(downloader, shortcode):
     return post.caption
 
 
-def process_post(downloader, post_url, firebase_client, verbose=False, local=False):
+def process_post(downloader, post_url, user, cookbook, generator, firebase_client, verbose=False, local=False):
     """
     Process an Instagram post to generate a recipe.
 
     Args:
         downloader (InstagramDownloader): Downloader instance.
         post_url (str): URL of the Instagram post.
+        user (User): User instance.
+        cookbook (Cookbook): Cookbook instance.
+        generator (RecipeGenerator): RecipeGenerator instance.
         firebase_client (FirebaseClient): FirebaseClient instance.
         verbose (bool): Whether to enable verbose output.
         local (bool): Whether to save files locally or to Firebase.
@@ -119,37 +126,28 @@ def process_post(downloader, post_url, firebase_client, verbose=False, local=Fal
 
     try:
         caption = get_audio(downloader, post_url, firebase_client, shortcode, audio_path, local)
-    except Exception as e:
-        logging.error(f"Error getting audio: {e}")
-        return
-
-    try:
         transcript = get_transcript(firebase_client, shortcode, audio_path, verbose)
-    except ValueError as e:
-        logging.error(f"Error getting transcript: {e}")
-        return
-
-    try:
-        recipe = firebase_client.download_string(f"recipes/recipe_{shortcode}.md")
-        logging.info(f"Recipe for {shortcode} already exists.")
-        logging.info("Done!")
-        return
-    except FileNotFoundError:
-        logging.info(f"Recipe for {shortcode} does not exist.")
     except Exception as e:
-        logging.error(f"Error retrieving recipe: {e}")
+        logging.error(f"Error processing audio or transcript: {e}")
         return
 
     if not caption:
         caption = get_caption(downloader, shortcode)
 
     logging.info("Generating recipe...")
-    generator = RecipeGenerator(output_dir="recipes", local=local, firebase_client=firebase_client)
     try:
-        recipe = generator.generate_recipe(transcript, caption)
-        generator.save_recipe(recipe, shortcode)
-    except ValueError as e:
-        logging.error(f"Recipe generation failed: {e}")
+        recipe_data = generator.generate_recipe(transcript, caption)
+        recipe = Recipe(
+            recipe_id=shortcode,
+            title=recipe_data.get('title'),
+            ingredients=recipe_data.get('ingredients'),
+            instructions=recipe_data.get('instructions'),
+            notes=recipe_data.get('notes'),
+            firebase_client=firebase_client
+        )
+        cookbook.add_recipe(user.user_id, recipe)
+    except Exception as e:
+        logging.error(f"Error during recipe generation or saving: {e}")
         return
 
     if verbose or logging.getLogger().getEffectiveLevel() == logging.DEBUG:
@@ -180,12 +178,46 @@ def main():
 
     firebase_client = FirebaseClient(local=args.local)
     downloader = InstagramDownloader(local=args.local)
+    generator = RecipeGenerator(output_dir="recipes", local=args.local, firebase_client=firebase_client)
+
+    # Prompt user for their information or generate IDs
+    user_id = input("Enter your user ID (or press Enter to generate one): ")
+    if not user_id:
+        user_id = str(uuid.uuid4())
+        logging.info(f"Generated user ID: {user_id}")
+
+    user_name = input("Enter your name: ")
+    user_email = input("Enter your email: ")
+
+    user = User(
+        user_id=user_id,
+        name=user_name,
+        email=user_email,
+        firebase_client=firebase_client
+    )
+    user.save()
+
+    # Create or select a cookbook
+    cookbook_name = input("Enter the name of your cookbook: ")
+    cookbook_description = input("Enter a description for your cookbook: ")
+    cookbook_id = str(uuid.uuid4())
+    logging.info(f"Generated cookbook ID: {cookbook_id}")
+
+    cookbook = Cookbook(
+        cookbook_id=cookbook_id,
+        name=cookbook_name,
+        description=cookbook_description,
+        firebase_client=firebase_client
+    )
+    user.create_cookbook(cookbook)
 
     for post_url in args.post_urls:
         process_post(
-            downloader, post_url, firebase_client, verbose=args.debug, local=args.local
+            downloader, post_url, user, cookbook, generator, firebase_client, verbose=args.debug, local=args.local
         )
 
-
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        logging.error(f"An unhandled exception occurred: {e}")
