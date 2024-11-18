@@ -3,7 +3,8 @@
     "files.exclude": {
         "**/__pycache__": true,
         "**/.venv": true,
-        "**/.pdm-python": true
+        "**/.pdm-python": true,
+        "**/.mypy_cache": true,
     },
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter",
