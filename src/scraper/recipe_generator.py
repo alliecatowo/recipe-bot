@@ -113,15 +113,16 @@ class RecipeGenerator:
             logging.error(f"Error during recipe generation: {e}")
             raise e
 
-    def save_recipe(self, recipe_data, shortcode):
+    def format_recipe_as_markdown(self, recipe_data):
         """
-        Save the generated recipe.
+        Format the recipe data as Markdown.
 
         Args:
             recipe_data (dict): Generated recipe data.
-            shortcode (str): Shortcode of the Instagram post.
+
+        Returns:
+            str: Recipe formatted as Markdown.
         """
-        # Format the recipe data as Markdown
         markdown_content = f"# {recipe_data['title']}\n\n"
         markdown_content += "## Ingredients\n"
         for ingredient in recipe_data["ingredients"]:
@@ -135,6 +136,18 @@ class RecipeGenerator:
             markdown_content += "\n## Tags\n"
             for category in recipe_data["categories"]:
                 markdown_content += f"- {category}\n"
+        return markdown_content
+
+    def save_recipe(self, recipe_data, shortcode):
+        """
+        Save the generated recipe.
+
+        Args:
+            recipe_data (dict): Generated recipe data.
+            shortcode (str): Shortcode of the Instagram post.
+        """
+        # Format the recipe data as Markdown
+        markdown_content = self.format_recipe_as_markdown(recipe_data)
 
         if self.local:
             os.makedirs(self.output_dir, exist_ok=True)
