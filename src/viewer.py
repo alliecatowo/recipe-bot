@@ -14,19 +14,29 @@ from prompt_toolkit.layout import Layout
 from prompt_toolkit.layout.containers import HSplit, Window
 from prompt_toolkit.widgets import TextArea, Label
 from prompt_toolkit.application.current import get_app
+from models.user import User
+from models.cookbook import Cookbook
+from models.recipe import Recipe
+from scraper.recipe_generator import RecipeGenerator
 
 logging.basicConfig(level=logging.INFO)
 
 
 class CLI:
-    def __init__(self, firebase_client):
+    def __init__(self, firebase_client, user_id):
         self.firebase_client = firebase_client
+        self.user = User(
+            user_id=user_id, name="", email="", firebase_client=firebase_client
+        )
+        self.recipe_generator = RecipeGenerator(local=firebase_client.local, firebase_client=firebase_client)
         self.recipes = self._list_recipes()
         self.recipes.append("Exit")
         self.selected_index = 0
         self.text_area = TextArea(text=self._get_recipe_list(), read_only=True)
         self.layout = Layout(HSplit([Label(text="Select a recipe:"), self.text_area]))
-        self.app = Application(layout=self.layout, key_bindings=self._create_bindings(), full_screen=False)
+        self.app = Application(
+            layout=self.layout, key_bindings=self._create_bindings(), full_screen=False
+        )
 
     def _list_recipes(self):
         if self.firebase_client.local:
@@ -37,8 +47,32 @@ class CLI:
                 if f.endswith(".md")
             ]
         else:
-            blobs = self.firebase_client.bucket.list_blobs(prefix="recipes/")
-            return [blob.name for blob in blobs if blob.name.endswith(".md")]
+            # List recipes from user's cookbooks
+            recipes = []
+            user_doc = (
+                self.firebase_client.db.collection("users")
+                .document(self.user.user_id)
+                .get()
+            )
+            user_data = user_doc.to_dict()
+            cookbook_ids = user_data.get("cookbooks", [])
+            for cookbook_id in cookbook_ids:
+                cookbook_doc = (
+                    self.firebase_client.db.collection("cookbooks")
+                    .document(cookbook_id)
+                    .get()
+                )
+                cookbook_data = cookbook_doc.to_dict()
+                recipe_ids = cookbook_data.get("recipes", [])
+                for recipe_id in recipe_ids:
+                    recipe_doc = (
+                        self.firebase_client.db.collection("recipes")
+                        .document(recipe_id)
+                        .get()
+                    )
+                    recipe = recipe_doc.to_dict()
+                    recipes.append((recipe_id, recipe["title"]))
+            return recipes
 
     def _display_recipe(self, recipe_path):
         recipe_content = self.firebase_client.download_string(recipe_path)
@@ -54,14 +88,34 @@ class CLI:
     def _get_recipe_list(self):
         return "\n".join(
             [
-                f"{'>' if i == self.selected_index else ' '} {os.path.basename(recipe)}"
+                f"{'>' if i == self.selected_index else ' '} {recipe[1]}"
                 for i, recipe in enumerate(self.recipes)
             ]
         )
 
-    def _display_recipe_in_editor(self, recipe_path):
+    def _display_recipe_in_editor(self, recipe_id):
+        recipe_doc = (
+            self.firebase_client.db.collection("recipes").document(recipe_id).get()
+        )
+        if not recipe_doc.exists:
+            logging.error(f"Recipe with ID {recipe_id} does not exist in Firebase.")
+            return
+        recipe_data = recipe_doc.to_dict()
+        recipe_path = f"recipes/{recipe_id}.md"
+
         if not os.path.exists(recipe_path):
-            recipe_content = self.firebase_client.download_string(recipe_path)
+            # Download recipe content from Firebase Storage
+            try:
+                recipe_content = self.firebase_client.download_string(
+                    f"recipes/recipe_{recipe_id}.md"
+                )
+            except FileNotFoundError:
+                logging.error(
+                    f"Remote path recipes/recipe_{recipe_id}.md does not exist in Firebase Storage."
+                )
+                # Format the recipe content using RecipeGenerator
+                recipe_content = self.recipe_generator.format_recipe_as_markdown(recipe_data)
+                self.recipe_generator.save_recipe(recipe_data, recipe_id)
             with open(recipe_path, "w") as f:
                 f.write(recipe_content)
         editor = os.getenv("EDITOR", "vi")
@@ -81,7 +135,7 @@ class CLI:
         if self.recipes[self.selected_index] == "Exit":
             self.app.exit()
         else:
-            self._display_recipe_in_editor(self.recipes[self.selected_index])
+            self._display_recipe_in_editor(self.recipes[self.selected_index][0])
             self.text_area.text = self._get_recipe_list()
             self.app.invalidate()
             get_app().invalidate()
@@ -102,6 +156,7 @@ class CLI:
         signal.signal(signal.SIGINT, self._handle_sigint)
         self.app.run()
 
+
 def main():
     """
     Main function to list and display recipes.
@@ -116,8 +171,15 @@ def main():
     args = parser.parse_args()
 
     firebase_client = FirebaseClient(local=args.local)
-    cli = CLI(firebase_client)
-    cli.run()
+
+    # Prompt for user ID
+    user_id = input("Enter your user ID: ")
+
+    cli = CLI(firebase_client, user_id)
+    try:
+        cli.run()
+    except Exception as e:
+        logging.error(f"An error occurred: {e}")
 
 
 if __name__ == "__main__":
