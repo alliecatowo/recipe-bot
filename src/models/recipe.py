@@ -8,6 +8,7 @@ class Recipe:
         title,
         ingredients,
         instructions,
+        categories,
         notes=None,
         firebase_client=None,
     ):
@@ -17,16 +18,25 @@ class Recipe:
         self.instructions = instructions
         self.notes = notes
         self.firebase_client = firebase_client or FirebaseClient()
+        self.categories = categories
 
-    def save(self, user_id, cookbook_id):
+    def save(self):
         recipe_data = {
             "title": self.title,
             "ingredients": self.ingredients,
             "instructions": self.instructions,
             "notes": self.notes,
+            "categories": self.categories,
         }
-        self.firebase_client.add_recipe_to_cookbook(
-            user_id, cookbook_id, self.recipe_id, recipe_data
-        )
+        self.firebase_client.save_recipe(self.recipe_id, recipe_data)
+
+    def get_data(self):
+        return {
+            "title": self.title,
+            "ingredients": self.ingredients,
+            "instructions": self.instructions,
+            "notes": self.notes,
+            "categories": self.categories,
+        }
 
     # ...additional methods...

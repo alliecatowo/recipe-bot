@@ -12,8 +12,10 @@ class Cookbook:
         cookbook_data = {
             "name": self.name,
             "description": self.description,
+            "recipes": []  # Initialize recipes as an empty array
         }
         self.firebase_client.create_cookbook(user_id, self.cookbook_id, cookbook_data)
 
-    def add_recipe(self, user_id, recipe):
-        recipe.save(user_id, self.cookbook_id)
+    def add_recipe(self, recipe):
+        recipe.save()
+        self.firebase_client.add_recipe_to_cookbook(self.cookbook_id, recipe.recipe_id)

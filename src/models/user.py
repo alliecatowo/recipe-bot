@@ -12,6 +12,7 @@ class User:
         user_data = {
             "name": self.name,
             "email": self.email,
+            "cookbooks": []  # Initialize cookbooks as an empty array
         }
         self.firebase_client.create_user(self.user_id, user_data)
 
