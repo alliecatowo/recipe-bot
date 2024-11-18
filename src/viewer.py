@@ -1,22 +1,23 @@
-import os
-import sys
-import logging
 import argparse
+import logging
+import os
+import signal
+import subprocess
+import sys
+
 import firebase_admin
 from firebase_admin import credentials, storage
-import subprocess
-import signal
-
-from firebase.client import FirebaseClient
 from prompt_toolkit import Application
+from prompt_toolkit.application.current import get_app
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.layout import Layout
 from prompt_toolkit.layout.containers import HSplit, Window
-from prompt_toolkit.widgets import TextArea, Label
-from prompt_toolkit.application.current import get_app
-from models.user import User
+from prompt_toolkit.widgets import Label, TextArea
+
+from firebase.client import FirebaseClient
 from models.cookbook import Cookbook
 from models.recipe import Recipe
+from models.user import User
 from scraper.recipe_generator import RecipeGenerator
 
 logging.basicConfig(level=logging.INFO)

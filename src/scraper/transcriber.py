@@ -1,5 +1,6 @@
-import whisper
 import logging
+
+import whisper
 
 
 class Transcriber:

@@ -1,7 +1,9 @@
-import os
-import logging
-import openai
 import json
+import logging
+import os
+
+import openai
+
 from config.config import OPENAI_API_KEY
 from firebase.client import FirebaseClient
 

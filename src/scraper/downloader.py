@@ -1,7 +1,8 @@
-import instaloader
-import os
-import requests
 import logging
+import os
+
+import instaloader
+import requests
 from pydub import AudioSegment
 
 
