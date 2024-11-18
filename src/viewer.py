@@ -4,6 +4,7 @@ import os
 import signal
 import subprocess
 import sys
+from typing import Any, List, Tuple, Union
 
 import firebase_admin
 from firebase_admin import credentials, storage
@@ -24,26 +25,28 @@ logging.basicConfig(level=logging.INFO)
 
 
 class CLI:
-    def __init__(self, firebase_client, user_id):
+    def __init__(self, firebase_client: FirebaseClient, user_id: str) -> None:
         self.firebase_client = firebase_client
         self.user = User(
             user_id=user_id, name="", email="", firebase_client=firebase_client
         )
-        self.recipe_generator = RecipeGenerator(local=firebase_client.local, firebase_client=firebase_client)
+        self.recipe_generator = RecipeGenerator(
+            local=firebase_client.local, firebase_client=firebase_client
+        )
         self.recipes = self._list_recipes()
-        self.recipes.append("Exit")
+        self.recipes.append(("exit", "Exit"))
         self.selected_index = 0
         self.text_area = TextArea(text=self._get_recipe_list(), read_only=True)
         self.layout = Layout(HSplit([Label(text="Select a recipe:"), self.text_area]))
-        self.app = Application(
+        self.app: Application = Application(
             layout=self.layout, key_bindings=self._create_bindings(), full_screen=False
         )
 
-    def _list_recipes(self):
+    def _list_recipes(self) -> List[Tuple[str, str]]:
         if self.firebase_client.local:
             recipes_dir = "recipes"
             return [
-                os.path.join(recipes_dir, f)
+                (os.path.join(recipes_dir, f), f)
                 for f in os.listdir(recipes_dir)
                 if f.endswith(".md")
             ]
@@ -75,18 +78,18 @@ class CLI:
                     recipes.append((recipe_id, recipe["title"]))
             return recipes
 
-    def _display_recipe(self, recipe_path):
+    def _display_recipe(self, recipe_path: str) -> None:
         recipe_content = self.firebase_client.download_string(recipe_path)
         print(recipe_content)
 
-    def _clear_screen(self):
+    def _clear_screen(self) -> None:
         os.system("cls" if os.name == "nt" else "clear")
 
-    def _handle_sigint(self, signum, frame):
+    def _handle_sigint(self, signum: int, frame: Any) -> None:
         print("\nExiting...")
         get_app().exit()
 
-    def _get_recipe_list(self):
+    def _get_recipe_list(self) -> str:
         return "\n".join(
             [
                 f"{'>' if i == self.selected_index else ' '} {recipe[1]}"
@@ -94,7 +97,7 @@ class CLI:
             ]
         )
 
-    def _display_recipe_in_editor(self, recipe_id):
+    def _display_recipe_in_editor(self, recipe_id: str) -> None:
         recipe_doc = (
             self.firebase_client.db.collection("recipes").document(recipe_id).get()
         )
@@ -115,24 +118,26 @@ class CLI:
                     f"Remote path recipes/recipe_{recipe_id}.md does not exist in Firebase Storage."
                 )
                 # Format the recipe content using RecipeGenerator
-                recipe_content = self.recipe_generator.format_recipe_as_markdown(recipe_data)
+                recipe_content = self.recipe_generator.format_recipe_as_markdown(
+                    recipe_data
+                )
                 self.recipe_generator.save_recipe(recipe_data, recipe_id)
             with open(recipe_path, "w") as f:
                 f.write(recipe_content)
         editor = os.getenv("EDITOR", "vi")
         subprocess.call([editor, recipe_path])
 
-    def _on_up(self, event):
+    def _on_up(self, event: Any) -> None:
         if self.selected_index > 0:
             self.selected_index -= 1
         self.text_area.text = self._get_recipe_list()
 
-    def _on_down(self, event):
+    def _on_down(self, event: Any) -> None:
         if self.selected_index < len(self.recipes) - 1:
             self.selected_index += 1
         self.text_area.text = self._get_recipe_list()
 
-    def _on_enter(self, event):
+    def _on_enter(self, event: Any) -> None:
         if self.recipes[self.selected_index] == "Exit":
             self.app.exit()
         else:
@@ -141,7 +146,7 @@ class CLI:
             self.app.invalidate()
             get_app().invalidate()
 
-    def _create_bindings(self):
+    def _create_bindings(self) -> KeyBindings:
         bindings = KeyBindings()
         bindings.add("up")(self._on_up)
         bindings.add("down")(self._on_down)
@@ -149,16 +154,16 @@ class CLI:
         bindings.add("c-c")(self._exit_app)
         return bindings
 
-    def _exit_app(self, event):
+    def _exit_app(self, event: Any) -> None:
         self.app.exit()
 
-    def run(self):
+    def run(self) -> None:
         self._clear_screen()
         signal.signal(signal.SIGINT, self._handle_sigint)
         self.app.run()
 
 
-def main():
+def main() -> None:
     """
     Main function to list and display recipes.
     """

@@ -25,8 +25,13 @@ warnings.filterwarnings(
 
 
 def get_audio(
-    downloader, post_url, firebase_client, shortcode, audio_path, local=False
-):
+    downloader: InstagramDownloader,
+    post_url: str,
+    firebase_client: FirebaseClient,
+    shortcode: str,
+    audio_path: str,
+    local: bool = False,
+) -> str:
     """
     Get the audio file for the Instagram post.
 
@@ -66,7 +71,9 @@ def get_audio(
     )
 
 
-def get_transcript(firebase_client, shortcode, audio_path, verbose):
+def get_transcript(
+    firebase_client: FirebaseClient, shortcode: str, audio_path: str, verbose: bool
+) -> str:
     """
     Get the transcript for the audio file.
 
@@ -98,7 +105,7 @@ def get_transcript(firebase_client, shortcode, audio_path, verbose):
     return transcript
 
 
-def get_caption(downloader, shortcode):
+def get_caption(downloader: InstagramDownloader, shortcode: str) -> str:
     """
     Get the caption for the Instagram post.
 
@@ -115,15 +122,15 @@ def get_caption(downloader, shortcode):
 
 
 def process_post(
-    downloader,
-    post_url,
-    user,
-    cookbook,
-    generator,
-    firebase_client,
-    verbose=False,
-    local=False,
-):
+    downloader: InstagramDownloader,
+    post_url: str,
+    user: User,
+    cookbook: Cookbook,
+    generator: RecipeGenerator,
+    firebase_client: FirebaseClient,
+    verbose: bool = False,
+    local: bool = False,
+) -> None:
     """
     Process an Instagram post to generate a recipe.
 
@@ -176,7 +183,7 @@ def process_post(
     logging.info("Done!")
 
 
-def main():
+def main() -> None:
     """
     Main function to parse arguments and process Instagram posts.
     """
@@ -194,27 +201,26 @@ def main():
         help="Save files locally instead of Firestore",
     )
 
-    args = parser.parse_args()
+    args: argparse.Namespace = parser.parse_args()
 
     if args.debug:
         logging.getLogger().setLevel(logging.DEBUG)
 
-    firebase_client = FirebaseClient(local=args.local)
-    downloader = InstagramDownloader(local=args.local)
-    generator = RecipeGenerator(
+    firebase_client: FirebaseClient = FirebaseClient(local=args.local)
+    downloader: InstagramDownloader = InstagramDownloader(local=args.local)
+    generator: RecipeGenerator = RecipeGenerator(
         output_dir="recipes", local=args.local, firebase_client=firebase_client
     )
 
     # Prompt user for their information or generate IDs
-    user_id = input("Enter your user ID (or press Enter to generate one): ")
-    if not user_id:
-        user_id = str(uuid.uuid4())
-        logging.info(f"Generated user ID: {user_id}")
+    user_id: str = input("Enter your user ID (or press Enter to generate one): ")
+    user_id = str(uuid.uuid4())
+    logging.info(f"Generated user ID: {user_id}")
 
-    user_name = input("Enter your name: ")
-    user_email = input("Enter your email: ")
+    user_name: str = input("Enter your name: ")
+    user_email: str = input("Enter your email: ")
 
-    user = User(
+    user: User = User(
         user_id=user_id,
         name=user_name,
         email=user_email,
@@ -223,12 +229,12 @@ def main():
     user.save()
 
     # Create or select a cookbook
-    cookbook_name = input("Enter the name of your cookbook: ")
-    cookbook_description = input("Enter a description for your cookbook: ")
-    cookbook_id = str(uuid.uuid4())
+    cookbook_name: str = input("Enter the name of your cookbook: ")
+    cookbook_description: str = input("Enter a description for your cookbook: ")
+    cookbook_id: str = str(uuid.uuid4())
     logging.info(f"Generated cookbook ID: {cookbook_id}")
 
-    cookbook = Cookbook(
+    cookbook: Cookbook = Cookbook(
         cookbook_id=cookbook_id,
         name=cookbook_name,
         description=cookbook_description,

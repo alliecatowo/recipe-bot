@@ -1,12 +1,16 @@
+import logging
 import os
+from typing import Dict, Optional
+
 import firebase_admin
 from firebase_admin import credentials, firestore, storage
-import logging
 
 
 class FirebaseClient:
-    def __init__(self, local=False, firebase_app=None):
-        self.local = local
+    def __init__(
+        self, local: bool = False, firebase_app: Optional[firebase_admin.App] = None
+    ):
+        self.local: bool = local
         if not local and firebase_app is None:
             if not firebase_admin._apps:
                 service_account_path = os.path.join(
@@ -21,13 +25,13 @@ class FirebaseClient:
                     },
                 )
         if not local:
-            self.db = firestore.client()
-            self.bucket = storage.bucket()
+            self.db: firestore.Client = firestore.client()
+            self.bucket: storage.Bucket = storage.bucket()
             logging.info(
                 "Firebase initialized successfully with service account credentials."
             )
 
-    def upload_file(self, local_path, remote_path):
+    def upload_file(self, local_path: str, remote_path: str) -> None:
         """
         Upload a file to Firebase Storage or save it locally.
 
@@ -51,7 +55,7 @@ class FirebaseClient:
             except Exception as e:
                 logging.error(f"Error uploading file to Firebase Storage: {e}")
 
-    def upload_string(self, content, remote_path):
+    def upload_string(self, content: str, remote_path: str) -> None:
         """
         Upload a string content to Firebase Storage or save it locally.
 
@@ -75,7 +79,7 @@ class FirebaseClient:
             except Exception as e:
                 logging.error(f"Error uploading content to Firebase Storage: {e}")
 
-    def download_string(self, remote_path):
+    def download_string(self, remote_path: str) -> str:
         """
         Download a string content from Firebase Storage or local storage.
 
@@ -123,7 +127,7 @@ class FirebaseClient:
                 logging.error(f"Error downloading content from Firebase Storage: {e}")
                 raise e
 
-    def download_file(self, remote_path, local_path):
+    def download_file(self, remote_path: str, local_path: str) -> None:
         """
         Download a file from Firebase Storage or local storage.
 
@@ -163,7 +167,9 @@ class FirebaseClient:
                 logging.error(f"Error downloading file from Firebase Storage: {e}")
                 raise e
 
-    def get_document(self, collection, document_id, local_path=None):
+    def get_document(
+        self, collection: str, document_id: str, local_path: Optional[str] = None
+    ) -> Dict:
         """
         Retrieve a document from Firestore or local storage.
 
@@ -209,7 +215,7 @@ class FirebaseClient:
             logging.error(f"Local path {local_path} does not exist.")
             raise FileNotFoundError(f"Local path {local_path} does not exist.")
 
-    def set_document(self, collection, document_id, data):
+    def set_document(self, collection: str, document_id: str, data: Dict) -> None:
         """
         Set a document in Firestore or save it locally.
 
@@ -235,7 +241,7 @@ class FirebaseClient:
             except Exception as e:
                 logging.error(f"Error setting document in Firestore: {e}")
 
-    def create_user(self, user_id, user_data):
+    def create_user(self, user_id: str, user_data: Dict) -> None:
         """Create a new user document."""
         if self.local:
             local_path = f"users/{user_id}.json"
@@ -250,7 +256,9 @@ class FirebaseClient:
             except Exception as e:
                 logging.error(f"Error creating user: {e}")
 
-    def create_cookbook(self, user_id, cookbook_id, cookbook_data):
+    def create_cookbook(
+        self, user_id: str, cookbook_id: str, cookbook_data: Dict
+    ) -> None:
         """Create a new cookbook and associate it with a user."""
         if self.local:
             local_path = f"users/{user_id}/cookbooks/{cookbook_id}.json"
@@ -265,11 +273,13 @@ class FirebaseClient:
                 # Update user document with reference to the cookbook ID
                 user_ref = self.db.collection("users").document(user_id)
                 user_ref.update({"cookbooks": firestore.ArrayUnion([cookbook_id])})
-                logging.info(f"Cookbook {cookbook_id} created and associated with user {user_id}.")
+                logging.info(
+                    f"Cookbook {cookbook_id} created and associated with user {user_id}."
+                )
             except Exception as e:
                 logging.error(f"Error creating cookbook: {e}")
 
-    def save_recipe(self, recipe_id, recipe_data):
+    def save_recipe(self, recipe_id: str, recipe_data: Dict) -> None:
         """Save a recipe in the 'recipes' collection."""
         if self.local:
             local_path = f"recipes/{recipe_id}.json"
@@ -284,53 +294,58 @@ class FirebaseClient:
             except Exception as e:
                 logging.error(f"Error saving recipe: {e}")
 
-    def add_recipe_to_cookbook(self, user_id, cookbook_id, recipe_id, recipe_data):
-        """Add a recipe to a cookbook."""
+    def add_recipe_to_cookbook(
+        self,
+        cookbook_id: str,
+        recipe_id: str,
+        user_id: Optional[str] = None,
+        recipe_data: Optional[Dict] = None,
+    ) -> None:
+        """Add a recipe to a cookbook or associate a recipe with a cookbook."""
         if self.local:
-            local_path = (
-                f"users/{user_id}/cookbooks/{cookbook_id}/recipes/{recipe_id}.json"
-            )
-            os.makedirs(os.path.dirname(local_path), exist_ok=True)
-            with open(local_path, "w") as file:
-                file.write(str(recipe_data))
-        else:
-            try:
-                recipe_ref = (
-                    self.db.collection("users")
-                    .document(user_id)
-                    .collection("cookbooks")
-                    .document(cookbook_id)
-                    .collection("recipes")
-                    .document(recipe_id)
+            if user_id and recipe_data:
+                local_path = (
+                    f"users/{user_id}/cookbooks/{cookbook_id}/recipes/{recipe_id}.json"
                 )
-                recipe_ref.set(recipe_data)
-                logging.info(
-                    f"Recipe {recipe_id} added to cookbook {cookbook_id} for user {user_id}."
-                )
-            except Exception as e:
-                logging.error(f"Error adding recipe: {e}")
-
-    def add_recipe_to_cookbook(self, cookbook_id, recipe_id):
-        """Associate a recipe with a cookbook."""
-        if self.local:
-            local_path = f"cookbooks/{cookbook_id}.json"
-            if os.path.exists(local_path):
-                try:
-                    with open(local_path, "r") as file:
-                        cookbook_data = eval(file.read())
-                    cookbook_data["recipes"].append(recipe_id)
-                    with open(local_path, "w") as file:
-                        file.write(str(cookbook_data))
-                    logging.info(f"Recipe {recipe_id} associated with cookbook {cookbook_id} locally.")
-                except Exception as e:
-                    logging.error(f"Error associating recipe locally: {e}")
+                os.makedirs(os.path.dirname(local_path), exist_ok=True)
+                with open(local_path, "w") as file:
+                    file.write(str(recipe_data))
             else:
-                logging.error(f"Cookbook {cookbook_id} does not exist locally.")
+                local_path = f"cookbooks/{cookbook_id}.json"
+                if os.path.exists(local_path):
+                    try:
+                        with open(local_path, "r") as file:
+                            cookbook_data = eval(file.read())
+                        cookbook_data["recipes"].append(recipe_id)
+                        with open(local_path, "w") as file:
+                            file.write(str(cookbook_data))
+                        logging.info(
+                            f"Recipe {recipe_id} associated with cookbook {cookbook_id} locally."
+                        )
+                    except Exception as e:
+                        logging.error(f"Error associating recipe locally: {e}")
+                else:
+                    logging.error(f"Cookbook {cookbook_id} does not exist locally.")
         else:
             try:
-                # Update cookbook document with reference to the recipe ID
-                cookbook_ref = self.db.collection("cookbooks").document(cookbook_id)
-                cookbook_ref.update({"recipes": firestore.ArrayUnion([recipe_id])})
-                logging.info(f"Recipe {recipe_id} associated with cookbook {cookbook_id}.")
+                if user_id and recipe_data:
+                    recipe_ref = (
+                        self.db.collection("users")
+                        .document(user_id)
+                        .collection("cookbooks")
+                        .document(cookbook_id)
+                        .collection("recipes")
+                        .document(recipe_id)
+                    )
+                    recipe_ref.set(recipe_data)
+                    logging.info(
+                        f"Recipe {recipe_id} added to cookbook {cookbook_id} for user {user_id}."
+                    )
+                else:
+                    cookbook_ref = self.db.collection("cookbooks").document(cookbook_id)
+                    cookbook_ref.update({"recipes": firestore.ArrayUnion([recipe_id])})
+                    logging.info(
+                        f"Recipe {recipe_id} associated with cookbook {cookbook_id}."
+                    )
             except Exception as e:
-                logging.error(f"Error associating recipe: {e}")
+                logging.error(f"Error adding or associating recipe: {e}")
