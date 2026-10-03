@@ -1,0 +1,44 @@
+name: Dependabot auto-merge
+
+# Standard pattern from GitHub's docs ("Automating Dependabot with GitHub Actions").
+# Patch and minor updates are approved and set to auto-merge; GitHub then merges
+# them only once the branch's REQUIRED status checks pass (see the `require-ci`
+# ruleset), so a PR that breaks CI never lands. Major updates are labelled and
+# left for a human. pull_request_target is safe here: this job never checks out
+# or runs code from the PR, it only reads Dependabot's metadata.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  dependabot:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Approve and enable auto-merge (patch and minor)
+        if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        run: |
+          gh pr review --approve "$PR_URL" || echo "approval not possible, relying on required checks only"
+          gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Label major updates for manual review
+        if: steps.metadata.outputs.update-type == 'version-update:semver-major'
+        run: |
+          gh label create major-update --color D93F0B --description "Major version bump, needs a human" 2>/dev/null || true
+          gh pr edit "$PR_URL" --add-label major-update
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
