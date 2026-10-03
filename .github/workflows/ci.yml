@@ -17,9 +17,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: astral-sh/setup-uv@v10.2.0
         with:
           python-version: "3.12"
-      - run: python -m compileall -q src
-      # Full install is skipped (torch/CUDA wheels are multi-GB); verify the lock matches pyproject.
-      - run: pipx run pdm lock --check
+      # The `transcribe` extra (local Whisper + PyTorch) is multi-GB and is not installed here.
+      - run: uv sync --locked
+      - run: uv run ruff check src tests
+      - run: uv run ruff format --check src tests
+      - run: uv run mypy
+      - run: uv run pytest

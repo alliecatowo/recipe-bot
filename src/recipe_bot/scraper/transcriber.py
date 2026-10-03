@@ -1,7 +1,4 @@
 import logging
-from typing import Optional
-
-import whisper  # type: ignore
 
 
 class Transcriber:
@@ -22,6 +19,13 @@ class Transcriber:
             model (whisper.Model, optional): Whisper model instance. Defaults to None.
         """
         self.audio_path = audio_path
+        try:
+            import whisper  # type: ignore
+        except ImportError as e:
+            raise RuntimeError(
+                "Local transcription needs the optional Whisper dependency: "
+                "run `uv sync --extra transcribe`."
+            ) from e
         self.model = whisper.load_model("small")
 
     def transcribe_audio(self, verbose: bool = False) -> str:
@@ -42,6 +46,6 @@ class Transcriber:
                 fp16=False,
             )
             return response.get("text", "")
-        except Exception as e:
+        except (RuntimeError, OSError, ValueError) as e:
             logging.error(f"Error during transcription: {e}")
             return ""

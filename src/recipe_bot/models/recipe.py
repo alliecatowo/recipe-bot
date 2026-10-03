@@ -1,6 +1,4 @@
-from typing import Dict, List, Optional, Union
-
-from firebase.client import FirebaseClient
+from recipe_bot.firebase.client import FirebaseClient
 
 
 class Recipe:
@@ -8,17 +6,19 @@ class Recipe:
         self,
         recipe_id: str,
         title: str,
-        ingredients: List[str],
-        instructions: List[str],
-        categories: List[str],
-        notes: Optional[str] = None,
-        firebase_client: Optional[FirebaseClient] = None,
+        ingredients: list[str],
+        instructions: list[str],
+        categories: list[str],
+        notes: str | None = None,
+        shortcode: str | None = None,
+        firebase_client: FirebaseClient | None = None,
     ) -> None:
         self.recipe_id = recipe_id
         self.title = title
         self.ingredients = ingredients
         self.instructions = instructions
         self.notes = notes
+        self.shortcode = shortcode  # Instagram post this recipe came from
         self.firebase_client = firebase_client or FirebaseClient()
         self.categories = categories
 
@@ -29,10 +29,11 @@ class Recipe:
             "instructions": self.instructions,
             "notes": self.notes,
             "categories": self.categories,
+            "shortcode": self.shortcode,
         }
         self.firebase_client.save_recipe(self.recipe_id, recipe_data)
 
-    def get_data(self) -> Dict[str, Union[str, List[str]]]:
+    def get_data(self) -> dict[str, str | list[str]]:
         return {
             "title": self.title,
             "ingredients": self.ingredients,
@@ -40,5 +41,3 @@ class Recipe:
             "notes": self.notes,
             "categories": self.categories,
         }
-
-    # ...additional methods...

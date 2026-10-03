@@ -1,30 +1,67 @@
 [project]
 name = "recipe-bot"
 version = "0.1.0"
-description = "Default template for PDM package"
-authors = [
-    { name = "Allison Emily Coleman", email = "me@allisons.dev" },
-]
+description = "Turn Instagram cooking videos into structured, actionable recipes."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Allison Coleman", email = "me@allisons.dev" }]
+requires-python = ">=3.12,<3.13"
 dependencies = [
-    "instaloader",
-    "openai",
+    "instaloader>=4.14",
+    "openai>=2.0",
     "pydub>=0.25.1",
-    "openai-whisper>=20240930",
     "google-cloud-firestore>=2.19.0",
     "firebase-admin>=6.6.0",
     "prompt-toolkit>=3.0.48",
+    "requests>=2.32",
 ]
-requires-python = "==3.12.*"
-readme = "README.md"
-license = { text = "MIT" }
 
+[project.optional-dependencies]
+# Local Whisper transcription. Pulls in PyTorch (multi-GB with CUDA wheels), so it
+# is opt-in: `uv sync --extra transcribe`.
+transcribe = ["openai-whisper>=20250625"]
 
-[tool.pdm]
-distribution = false
+[dependency-groups]
+dev = [
+    "mypy>=1.13.0",
+    "pytest>=9.0",
+    "ruff>=0.14",
+    "types-requests>=2.32.0.20241016",
+]
 
-[tool.pdm.dev-dependencies]
-dev = ["mypy>=1.13.0", "types-requests>=2.32.0.20241016"]
+[project.scripts]
+recipe-bot = "recipe_bot.main:main"
+recipe-bot-view = "recipe_bot.viewer:main"
 
-[tool.pdm.scripts]
-run = "python src/main.py"
-view = "python src/viewer.py"
+[build-system]
+requires = ["uv_build>=0.12.22,<0.13"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "recipe_bot"
+module-root = "src"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"] # long prompt strings; the formatter handles the rest
+
+[tool.mypy]
+python_version = "3.12"
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+strict_optional = false
+mypy_path = "src"
+packages = ["recipe_bot"]
+
+[[tool.mypy.overrides]]
+module = ["firebase_admin.*", "instaloader.*", "whisper.*", "pydub.*"]
+ignore_missing_imports = true

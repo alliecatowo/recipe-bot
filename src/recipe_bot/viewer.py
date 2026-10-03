@@ -3,21 +3,18 @@ import logging
 import os
 import signal
 import subprocess
-import sys
-from typing import Any, List, Tuple, Union
+from typing import Any
 
 from prompt_toolkit import Application
 from prompt_toolkit.application.current import get_app
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.layout import Layout
-from prompt_toolkit.layout.containers import HSplit, Window
+from prompt_toolkit.layout.containers import HSplit
 from prompt_toolkit.widgets import Label, TextArea
 
-from firebase.client import FirebaseClient
-from models.cookbook import Cookbook
-from models.recipe import Recipe
-from models.user import User
-from scraper.recipe_generator import RecipeGenerator
+from recipe_bot.firebase.client import FirebaseClient
+from recipe_bot.models.user import User
+from recipe_bot.scraper.recipe_generator import RecipeGenerator
 
 logging.basicConfig(level=logging.INFO)
 
@@ -25,9 +22,7 @@ logging.basicConfig(level=logging.INFO)
 class CLI:
     def __init__(self, firebase_client: FirebaseClient, user_id: str) -> None:
         self.firebase_client = firebase_client
-        self.user = User(
-            user_id=user_id, name="", email="", firebase_client=firebase_client
-        )
+        self.user = User(user_id=user_id, name="", email="", firebase_client=firebase_client)
         self.recipe_generator = RecipeGenerator(
             local=firebase_client.local, firebase_client=firebase_client
         )
@@ -40,7 +35,7 @@ class CLI:
             layout=self.layout, key_bindings=self._create_bindings(), full_screen=False
         )
 
-    def _list_recipes(self) -> List[Tuple[str, str]]:
+    def _list_recipes(self) -> list[tuple[str, str]]:
         if self.firebase_client.local:
             recipes_dir = "recipes"
             return [
@@ -51,26 +46,18 @@ class CLI:
         else:
             # List recipes from user's cookbooks
             recipes = []
-            user_doc = (
-                self.firebase_client.db.collection("users")
-                .document(self.user.user_id)
-                .get()
-            )
+            user_doc = self.firebase_client.db.collection("users").document(self.user.user_id).get()
             user_data = user_doc.to_dict()
             cookbook_ids = user_data.get("cookbooks", [])
             for cookbook_id in cookbook_ids:
                 cookbook_doc = (
-                    self.firebase_client.db.collection("cookbooks")
-                    .document(cookbook_id)
-                    .get()
+                    self.firebase_client.db.collection("cookbooks").document(cookbook_id).get()
                 )
                 cookbook_data = cookbook_doc.to_dict()
                 recipe_ids = cookbook_data.get("recipes", [])
                 for recipe_id in recipe_ids:
                     recipe_doc = (
-                        self.firebase_client.db.collection("recipes")
-                        .document(recipe_id)
-                        .get()
+                        self.firebase_client.db.collection("recipes").document(recipe_id).get()
                     )
                     recipe = recipe_doc.to_dict()
                     recipes.append((recipe_id, recipe["title"]))
@@ -96,9 +83,7 @@ class CLI:
         )
 
     def _display_recipe_in_editor(self, recipe_id: str) -> None:
-        recipe_doc = (
-            self.firebase_client.db.collection("recipes").document(recipe_id).get()
-        )
+        recipe_doc = self.firebase_client.db.collection("recipes").document(recipe_id).get()
         if not recipe_doc.exists:
             logging.error(f"Recipe with ID {recipe_id} does not exist in Firebase.")
             return
@@ -116,9 +101,7 @@ class CLI:
                     f"Remote path recipes/recipe_{recipe_id}.md does not exist in Firebase Storage."
                 )
                 # Format the recipe content using RecipeGenerator
-                recipe_content = self.recipe_generator.format_recipe_as_markdown(
-                    recipe_data
-                )
+                recipe_content = self.recipe_generator.format_recipe_as_markdown(recipe_data)
                 self.recipe_generator.save_recipe(recipe_data, recipe_id)
             with open(recipe_path, "w") as f:
                 f.write(recipe_content)
@@ -180,10 +163,7 @@ def main() -> None:
     user_id = input("Enter your user ID: ")
 
     cli = CLI(firebase_client, user_id)
-    try:
-        cli.run()
-    except Exception as e:
-        logging.error(f"An error occurred: {e}")
+    cli.run()
 
 
 if __name__ == "__main__":
