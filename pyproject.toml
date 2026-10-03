@@ -3,7 +3,7 @@ name = "recipe-bot"
 version = "0.1.0"
 description = "Default template for PDM package"
 authors = [
-    { name = "Allison Emily Coleman", email = "allisonemilycoleman@gmail.com" },
+    { name = "Allison Emily Coleman", email = "me@allisons.dev" },
 ]
 dependencies = [
     "instaloader",
