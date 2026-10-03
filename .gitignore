@@ -2,6 +2,12 @@
 .private/
 recipes/
 downloads/
+# Local-mode (--local) data written to the working directory
+users/
+transcripts/
+audio/
+audio_metadata/
+cookbooks/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

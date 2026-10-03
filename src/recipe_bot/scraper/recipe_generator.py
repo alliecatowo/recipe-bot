@@ -2,13 +2,12 @@ import json
 import logging
 import os
 import uuid
-from typing import Dict, List, Optional, Union
 
 import openai
 
-from config.config import OPENAI_API_KEY
-from firebase.client import FirebaseClient
-from models.recipe import Recipe
+from recipe_bot.config.config import OPENAI_API_KEY
+from recipe_bot.firebase.client import FirebaseClient
+from recipe_bot.models.recipe import Recipe
 
 openai.api_key = OPENAI_API_KEY
 
@@ -27,7 +26,7 @@ class RecipeGenerator:
         self,
         output_dir: str = "recipes",
         local: bool = False,
-        firebase_client: Optional[FirebaseClient] = None,
+        firebase_client: FirebaseClient | None = None,
     ) -> None:
         """
         Initialize the RecipeGenerator.
@@ -69,7 +68,7 @@ class RecipeGenerator:
             likelihood_str = response.choices[0].message.content.strip()
             likelihood = int(likelihood_str.split(":")[1].strip().replace("%", ""))
             return likelihood
-        except Exception as e:
+        except (openai.OpenAIError, AttributeError, IndexError, ValueError) as e:
             logging.error(f"Error during classification: {e}")
             return 0
 
@@ -130,14 +129,12 @@ class RecipeGenerator:
             )
         except json.JSONDecodeError as e:
             logging.error(f"Failed to parse recipe JSON: {e}")
-            raise ValueError("Invalid recipe format received from OpenAI.")
-        except Exception as e:
-            logging.error(f"Error during recipe generation: {e}")
-            raise e
+            raise ValueError("Invalid recipe format received from OpenAI.") from e
+        except KeyError as e:
+            logging.error(f"Recipe JSON is missing {e}")
+            raise ValueError(f"Recipe JSON is missing {e}") from e
 
-    def format_recipe_as_markdown(
-        self, recipe_data: Dict[str, Union[str, List[str]]]
-    ) -> str:
+    def format_recipe_as_markdown(self, recipe_data: dict[str, str | list[str]]) -> str:
         """
         Format the recipe data as Markdown.
 
@@ -162,15 +159,17 @@ class RecipeGenerator:
                 markdown_content += f"- {category}\n"
         return markdown_content
 
-    def save_recipe(
-        self, recipe_data: Dict[str, Union[str, List[str]]], shortcode: str
-    ) -> None:
+    def save_recipe(self, recipe_data: dict[str, str | list[str]], shortcode: str) -> None:
         """
         Save the generated recipe.
 
         Args:
             recipe_data (dict): Generated recipe data.
             shortcode (str): Shortcode of the Instagram post.
+
+        Raises:
+            OSError: If the local file cannot be written.
+            StorageError: If the upload to Firebase Storage fails.
         """
         # Format the recipe data as Markdown
         markdown_content = self.format_recipe_as_markdown(recipe_data)
@@ -178,21 +177,11 @@ class RecipeGenerator:
         if self.local:
             os.makedirs(self.output_dir, exist_ok=True)
             output_path = os.path.join(self.output_dir, f"recipe_{shortcode}.md")
-            try:
-                with open(output_path, "w") as file:
-                    file.write(markdown_content)
-                if logging.getLogger().getEffectiveLevel() == logging.DEBUG:
-                    logging.debug(f"Generated Recipe is:\n{markdown_content}\n")
-                logging.info(f"Recipe saved to {output_path}")
-            except Exception as e:
-                logging.error(f"Error saving recipe: {e}")
+            with open(output_path, "w", encoding="utf-8") as file:
+                file.write(markdown_content)
+            logging.debug(f"Generated Recipe is:\n{markdown_content}\n")
+            logging.info(f"Recipe saved to {output_path}")
         else:
-            try:
-                self.firebase_client.upload_string(
-                    markdown_content, f"recipes/recipe_{shortcode}.md"
-                )
-                logging.info(
-                    f"Recipe uploaded to Firebase Storage at recipes/recipe_{shortcode}.md"
-                )
-            except Exception as e:
-                logging.error(f"Error uploading recipe to Firebase Storage: {e}")
+            remote_path = f"recipes/recipe_{shortcode}.md"
+            self.firebase_client.upload_string(markdown_content, remote_path)
+            logging.info(f"Recipe uploaded to Firebase Storage at {remote_path}")

@@ -3,7 +3,7 @@
     "files.exclude": {
         "**/__pycache__": true,
         "**/.venv": true,
-        "**/.pdm-python": true,
+        "**/.venv": true,
         "**/.mypy_cache": true,
     },
     "[python]": {

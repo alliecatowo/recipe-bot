@@ -5,16 +5,26 @@ import uuid
 import warnings
 
 import instaloader
+import openai
+import requests
 
-from .firebase.client import FirebaseClient
-from .models.cookbook import Cookbook
-from .models.recipe import Recipe
-from .models.user import User
-from .scraper.downloader import InstagramDownloader
-from .scraper.recipe_generator import RecipeGenerator
-from .scraper.transcriber import Transcriber
+from recipe_bot.firebase.client import FirebaseClient, StorageError
+from recipe_bot.models.cookbook import Cookbook
+from recipe_bot.models.user import User
+from recipe_bot.scraper.downloader import InstagramDownloader
+from recipe_bot.scraper.recipe_generator import RecipeGenerator
+from recipe_bot.scraper.transcriber import Transcriber
 
 logging.basicConfig(level=logging.INFO)
+
+# Everything a post can fail with: Instagram, network, disk, storage or a bad transcript.
+PROCESSING_ERRORS = (
+    instaloader.InstaloaderException,
+    requests.RequestException,
+    OSError,
+    StorageError,
+    ValueError,
+)
 
 # Suppress specific FutureWarning from torch.load
 warnings.filterwarnings(
@@ -63,12 +73,10 @@ def get_audio(
                     {"caption": caption, "audio_path": f"audio/{shortcode}.mp3"},
                 )
                 return caption
-            except Exception as e:
+            except PROCESSING_ERRORS as e:
                 logging.error(f"Failed to download audio: {e}")
-                raise e
-    return firebase_client.get_document("audio_metadata", f"{shortcode}.mp3").get(
-        "caption", ""
-    )
+                raise
+    return firebase_client.get_document("audio_metadata", f"{shortcode}.mp3").get("caption", "")
 
 
 def get_transcript(
@@ -87,9 +95,7 @@ def get_transcript(
         str: Transcript of the audio file.
     """
     try:
-        transcript = firebase_client.get_document(
-            "transcripts", shortcode, local_path=f"transcripts/{shortcode}.txt"
-        ).get("transcript", "")
+        transcript = firebase_client.get_document("transcripts", shortcode).get("transcript", "")
         logging.info(f"Transcript for {shortcode} already exists.")
     except FileNotFoundError:
         logging.info(f"Transcript for {shortcode} does not exist.")
@@ -97,11 +103,8 @@ def get_transcript(
         transcriber = Transcriber(audio_path)
         transcript = transcriber.transcribe_audio(verbose)
         if not transcript:
-            logging.error("Failed to transcribe audio.")
-            raise ValueError("Failed to transcribe audio.")
-        firebase_client.set_document(
-            "transcripts", shortcode, {"transcript": transcript}
-        )
+            raise ValueError("Failed to transcribe audio.") from None
+        firebase_client.set_document("transcripts", shortcode, {"transcript": transcript})
     return transcript
 
 
@@ -146,22 +149,16 @@ def process_post(
     """
     shortcode = downloader._get_shortcode(post_url)
     audio_path = os.path.join("downloads", f"{shortcode}.mp3")
-    recipe_path = os.path.join("recipes", f"recipe_{shortcode}.md")
 
     # Check if the recipe already exists for the user
-    user_recipes = user.get_user_recipes()
-    if any(recipe.get("shortcode") == shortcode for recipe in user_recipes):
-        logging.info(
-            f"Recipe for shortcode {shortcode} already exists for user {user.user_id}."
-        )
+    if user.has_recipe_for(shortcode):
+        logging.info(f"Recipe for shortcode {shortcode} already exists for user {user.user_id}.")
         return
 
     try:
-        caption = get_audio(
-            downloader, post_url, firebase_client, shortcode, audio_path, local
-        )
+        caption = get_audio(downloader, post_url, firebase_client, shortcode, audio_path, local)
         transcript = get_transcript(firebase_client, shortcode, audio_path, verbose)
-    except Exception as e:
+    except PROCESSING_ERRORS as e:
         logging.error(f"Error processing audio or transcript: {e}")
         return
 
@@ -171,8 +168,9 @@ def process_post(
     logging.info("Generating recipe...")
     try:
         recipe = generator.generate_recipe(transcript, caption, firebase_client)
+        recipe.shortcode = shortcode
         cookbook.add_recipe(recipe)
-    except Exception as e:
+    except (ValueError, openai.OpenAIError, StorageError) as e:
         logging.error(f"Error during recipe generation or saving: {e}")
         return
 
@@ -186,12 +184,8 @@ def main() -> None:
     """
     Main function to parse arguments and process Instagram posts.
     """
-    parser = argparse.ArgumentParser(
-        description="Process Instagram post URLs to generate recipes."
-    )
-    parser.add_argument(
-        "post_urls", nargs="+", help="Instagram post URL(s), separated by spaces"
-    )
+    parser = argparse.ArgumentParser(description="Process Instagram post URLs to generate recipes.")
+    parser.add_argument("post_urls", nargs="+", help="Instagram post URL(s), separated by spaces")
     parser.add_argument("--debug", action="store_true", help="Enable debug output")
     parser.add_argument(
         "--local",
@@ -256,7 +250,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        logging.error(f"An unhandled exception occurred: {e}")
+    main()

@@ -1,10 +1,10 @@
 import logging
 import os
-from typing import Tuple
 
 import instaloader
 import requests
 from pydub import AudioSegment  # type: ignore
+from pydub.exceptions import CouldntDecodeError  # type: ignore
 
 
 class InstagramDownloader:
@@ -28,9 +28,7 @@ class InstagramDownloader:
         if not local:
             logging.info("Firebase initialized successfully.")
 
-    def download_content(
-        self, post_url: str, output_dir: str = "downloads"
-    ) -> Tuple[str, str]:
+    def download_content(self, post_url: str, output_dir: str = "downloads") -> tuple[str, str]:
         """
         Download content from an Instagram post.
 
@@ -42,7 +40,8 @@ class InstagramDownloader:
             tuple: Path to the audio file and the post caption.
 
         Raises:
-            Exception: If there is an error during download.
+            instaloader.InstaloaderException, requests.RequestException or OSError: If the
+                post cannot be fetched or its audio cannot be written.
         """
         os.makedirs(output_dir, exist_ok=True)
         try:
@@ -52,20 +51,16 @@ class InstagramDownloader:
             caption = post.caption
             video_url = post.video_url
 
-            audio_path = os.path.join(
-                output_dir, f"{self._get_shortcode(post_url)}.mp3"
-            )
+            audio_path = os.path.join(output_dir, f"{self._get_shortcode(post_url)}.mp3")
             if not os.path.exists(audio_path):
-                video_path = os.path.join(
-                    output_dir, f"{self._get_shortcode(post_url)}.mp4"
-                )
+                video_path = os.path.join(output_dir, f"{self._get_shortcode(post_url)}.mp4")
                 self._download_video(video_url, video_path)
                 self._convert_to_audio(video_path, audio_path)
 
             return audio_path, caption
-        except Exception as e:
+        except (instaloader.InstaloaderException, requests.RequestException, OSError) as e:
             logging.error(f"Error downloading content: {e}")
-            raise e
+            raise
 
     def _get_shortcode(self, post_url: str) -> str:
         """
@@ -117,6 +112,6 @@ class InstagramDownloader:
             audio = AudioSegment.from_file(video_path, format="mp4")
             audio.export(audio_path, format="mp3", bitrate="192k")
             logging.info(f"Audio extracted to {audio_path}")
-        except Exception as e:
+        except (CouldntDecodeError, OSError) as e:
             logging.error(f"Error converting video to audio: {e}")
-            raise e
+            raise
