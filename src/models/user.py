@@ -1,3 +1,4 @@
+import ast
 import logging
 import os
 from typing import Dict, List, Optional
@@ -46,7 +47,7 @@ class User:
                     for cookbook_file in os.listdir(local_path):
                         cookbook_path = os.path.join(local_path, cookbook_file)
                         with open(cookbook_path, "r") as file:
-                            cookbook_data = eval(file.read())
+                            cookbook_data = ast.literal_eval(file.read())
                             recipes.extend(cookbook_data.get("recipes", []))
                     logging.info(
                         f"Recipes for user {self.user_id} downloaded from local storage."

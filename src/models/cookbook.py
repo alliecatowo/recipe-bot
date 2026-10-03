@@ -1,3 +1,4 @@
+import ast
 import logging
 import os
 from typing import Optional
@@ -37,7 +38,7 @@ class Cookbook:
             if os.path.exists(local_path):
                 try:
                     with open(local_path, "r") as file:
-                        cookbook_data = eval(file.read())
+                        cookbook_data = ast.literal_eval(file.read())
                     cookbook_data["recipes"].append(recipe.recipe_id)
                     with open(local_path, "w") as file:
                         file.write(str(cookbook_data))

@@ -1,3 +1,4 @@
+import ast
 import logging
 import os
 from typing import Dict, List, Optional
@@ -190,7 +191,7 @@ class FirebaseClient:
                 with open(local_path, "r") as file:
                     content = file.read()
                 logging.info(f"Document downloaded from local storage at {local_path}")
-                return eval(
+                return ast.literal_eval(
                     content
                 )  # Assuming the local document is stored as a dictionary string
             except Exception as e:
