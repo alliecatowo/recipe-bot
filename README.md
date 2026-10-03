@@ -187,6 +187,6 @@ This project is licensed under the [MIT License](LICENSE).
 
 ## Support
 
-If you encounter any issues, feel free to [open an issue](https://github.com/alliecatowo/recipe-bot/issues) or reach out to `allisonemilycoleman@gmail.com`.
+If you encounter any issues, feel free to [open an issue](https://github.com/alliecatowo/recipe-bot/issues) or reach out to `me@allisons.dev`.
 
 Happy scraping! 🎉
