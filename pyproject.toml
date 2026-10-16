@@ -35,7 +35,7 @@ recipe-bot = "recipe_bot.main:main"
 recipe-bot-view = "recipe_bot.viewer:main"
 
 [build-system]
-requires = ["uv_build>=0.12.22,<0.13"]
+requires = ["uv_build>=0.12.22,<0.14"]
 build-backend = "uv_build"
 
 [tool.uv.build-backend]
